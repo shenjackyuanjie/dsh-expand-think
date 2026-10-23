@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="思考自动展开与收起">
+  <rect x="3" y="3" width="58" height="58" rx="16" fill="#2563eb"/>
+  <g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m24 16 8-6 8 6M24 48l8 6 8-6"/>
+    <path d="M23 25h18M23 32h18M23 39h12"/>
+  </g>
+</svg>

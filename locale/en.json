@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "dsh-expand-thnk",
+    "description": "thinking 输出时自动展开，结束后自动收起，并保留手动查看。启用时应用本地前端补丁，停用时自动还原。"
+  }
+}

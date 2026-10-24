@@ -43,7 +43,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "node test.mjs",
-    "pack": "node -e \"require('node:fs').mkdirSync('dist',{recursive:true})\" && npm pack --ignore-scripts --pack-destination dist"
+    "pack": "node -e \"require('node:fs').mkdirSync('dist',{recursive:true})\" && pnpm pack --ignore-scripts --pack-destination dist"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.5"

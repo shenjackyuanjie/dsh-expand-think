@@ -7,5 +7,8 @@ export const Config = Schema.object({
 });
 
 export function readSettings(config) {
-  return normalizeOptions({ autoExpand: config.autoExpand.get(), autoCollapse: config.autoCollapse.get() });
+  return normalizeOptions({
+    autoExpand: config.autoExpand.get(),
+    autoCollapse: config.autoCollapse.get(),
+  });
 }

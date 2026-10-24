@@ -36,7 +36,7 @@
 
 ## 兼容范围与实现方式
 
-当前版本只支持 **DSH `0.2.1-rc.2`** 和 **`@deepseek-ai/dsh-client-ui-chat@0.2.1-rc.2`**。不提供旧宿主版本的兼容分支：不符合版本要求时停止激活，也不申请兼容性豁免。
+当前版本支持 **DSH `0.2.1-rc.2` 与 `0.2.1-rc.3`**，对应的 **`@deepseek-ai/dsh-client-ui-chat` `0.2.1-rc.2`／`0.2.1-rc.3`**。这两个版本的 `ReasoningRow` 锚点完全相同，共用同一份补丁、没有版本分支。更早的宿主版本不再适配：不符合版本要求时停止激活，也不申请兼容性豁免。
 
 当前 DSH 的 reasoning Body Slot 仅在正文已经展开后挂载，无法控制外层开合。因此，这一版采用 **Host 插件管理的最小本地前端补丁**，不是 DOM 点击模拟，也不复制整套 Chat renderer。
 
@@ -119,7 +119,7 @@ node test.mjs "D:\实际路径\dsh-client-ui-chat\lib\client.js"
 
 ## 验证边界
 
-42 项离线测试覆盖自动开合、四种开关组合、手动选择保留、多区块隔离、历史默认折叠、插件启停、设置保存和版本冲突、保存不产生额外 HMR、只读配置桥接及清理、不注册额外配置 Tool、包名与插槽标识一致、HMR 回调重入、延后挂载、版本拒绝，以及不覆盖其他修改。可用最小 fixture 或只读的真实 Chat 产物执行，生命周期测试仅修改隔离临时目录。
+44 项离线测试覆盖自动开合、四种开关组合、手动选择保留、多区块隔离、历史默认折叠、插件启停、两个受支持宿主版本、设置保存和版本冲突、保存不产生额外 HMR、只读配置桥接及清理、不注册额外配置 Tool、包名与插槽标识一致、HMR 回调重入、延后挂载、版本拒绝，以及不覆盖其他修改。可用最小 fixture 或只读的真实 Chat 产物执行，生命周期测试仅修改隔离临时目录。
 
 0.1.0 的核心开合逻辑曾由使用者在当前 DSH 页面确认正常。0.2.0 连续保存设置的热更新验证期间，使用者报告输入框频繁消失，停用后恢复；0.2.1 已移除保存时重载 Chat 的路径，并经使用者重启后截图确认两个开关显示正常。0.3.0 改用新包名、收敛到当前宿主版本并移除旧补丁迁移代码，重新安装后需要在页面上复核。长时间输入框稳定性与浅色主题仍未完成实际页面复核；离线测试不能替代这部分验证。
 
@@ -127,4 +127,6 @@ node test.mjs "D:\实际路径\dsh-client-ui-chat\lib\client.js"
 
 源码公开托管于 [GitHub：shenjackyuanjie/dsh-expand-think](https://github.com/shenjackyuanjie/dsh-expand-think)，包发布在 GitHub Packages 的 `@shenjackyuanjie` scope 下。
 
-发布用 `npm publish`（`publishConfig` 已固定 registry 与 public 访问）。GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。授权状态保持 `UNLICENSED`，尚未附加对外使用许可证。
+发布用 `npm publish`（`publishConfig` 已固定 registry 与 public 访问）。GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。
+
+以 [MIT 许可证](./LICENSE)发布。

@@ -3,9 +3,11 @@ import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { Script } from 'node:vm';
 import { patchSource, supportedVersion, targetModule } from './patch-core.js';
+import { Config } from './settings.js';
 
+export { Config };
 export const name = 'dsh-expand-thnk';
-export const inject = ['clientModules'];
+export const inject = ['clientModules', 'settings'];
 
 // 原子替换，防止 HMR 读取半截文件；只编译检查，不运行浏览器代码。
 function replaceFile(target, before, after) {
@@ -36,6 +38,7 @@ function validateTarget(target) {
 
 /** 由 DSH 管理生命周期：启用应用、停用反向撤销，并发布前端新版本。 */
 export function apply(ctx) {
+  ctx.effect(() => ctx.settings.configure({ auto: false }, ctx.fiber));
   ctx.effect(() => {
     const modules = ctx.clientModules;
     const managed = new Set();

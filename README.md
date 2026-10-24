@@ -63,6 +63,18 @@ pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.
 
 默认两项均开启。插件启用或停用时仍需应用／撤销一次前端补丁，可能触发一次 Chat 更新；保存开关不触发该流程。
 
+### 从 GitHub Packages 安装
+
+包已发布到 GitHub Packages：`@shenjackyuanjie/dsh-expand-think`。GitHub 的 npm registry 读取公开包也需要认证，使用具备 `read:packages` 的 classic PAT 在本机登录（不要提交 token）：
+
+```powershell
+npm config set '@shenjackyuanjie:registry' 'https://npm.pkg.github.com' --location=user
+npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg.github.com
+pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.0
+```
+
+登录时 Username 填 GitHub 用户名，Password 填 PAT。首次发布后需在 GitHub 的 Package settings 中确认包可见性为 Public。
+
 **从 0.2.2 及更早版本升级：** 包名已改为 `@shenjackyuanjie/dsh-expand-think`，行 id 为 `dsh-expand-think`。先在插件管理器卸载旧的 `dsh-expand-thnk`，再安装新包；旧包名的设置不会迁移，新包装好后按默认值（两项均开启）开始。旧版本留下的本地补丁会在新插件启用时被识别并接管，不需要手动清理。
 
 ### 停用或卸载
@@ -113,6 +125,6 @@ node test.mjs "D:\实际路径\dsh-client-ui-chat\lib\client.js"
 
 ## 发布状态
 
-源码公开托管于 [GitHub：shenjackyuanjie/dsh-expand-thnk](https://github.com/shenjackyuanjie/dsh-expand-thnk)。
+源码公开托管于 [GitHub：shenjackyuanjie/dsh-expand-think](https://github.com/shenjackyuanjie/dsh-expand-think)，包发布在 GitHub Packages 的 `@shenjackyuanjie` scope 下。
 
-当前支持本地打包与安装，尚未发布到 npm。`private: true` 仅用于防止意外发布 npm 包，不影响 GitHub 仓库公开可见性。当前授权状态保持 `UNLICENSED`，尚未附加对外使用许可证。
+发布用 `npm publish`（`publishConfig` 已固定 registry 与 public 访问）。GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。授权状态保持 `UNLICENSED`，尚未附加对外使用许可证。

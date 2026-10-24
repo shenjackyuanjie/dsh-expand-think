@@ -2,7 +2,7 @@
 
 ## 0.3.0 — 2026-10-24
 
-包名、行 id 与内部标识全部改为 `dsh-expand-think`，属不兼容变更，需要卸载旧包后重装。
+包名、行 id 与内部标识全部改为 `dsh-expand-think`，属不兼容变更，需要卸载旧包后重装。本版首次发布到 GitHub Packages，仓库同时更名为 `dsh-expand-think`。
 
 - 包名改为 `@shenjackyuanjie/dsh-expand-think`，patch 行 id 为 `dsh-expand-think`，Client 模块 id 与详情页插槽 key 随之统一。
 - 插件详情页插槽 key 现在取 bundle 包名，配置 namespace 取行 id，两者分开声明并在回归中校验一致。

@@ -1,5 +1,10 @@
 # 版本记录
 
+## 未发布
+
+- 依赖安装与打包统一改用 pnpm：`package-lock.json` 换成 `pnpm-lock.yaml`，`pack` 脚本改用 `pnpm pack`，与 DSH 生态的包管理方式一致。
+- README 的开发命令同步改为 pnpm，安装示例的版本号更新到当前 0.3.1。
+
 ## 0.3.1 — 2026-10-24
 
 - 支持宿主 `0.2.1-rc.3`：rc.3 的 `ReasoningRow` 锚点与 rc.2 完全相同，直接复用同一份补丁，不新增版本分支。

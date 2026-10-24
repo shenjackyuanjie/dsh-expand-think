@@ -53,12 +53,12 @@
 
 ### 安装打包产物
 
-在 DSH 插件管理器中选择本地 `shenjackyuanjie-dsh-expand-think-0.3.0.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。
+在 DSH 插件管理器中选择本地 `shenjackyuanjie-dsh-expand-think-0.3.1.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。
 
 命令行也可通过 DSH 自己的插件入口安装。以下命令在安装了 DSH 的目录执行，`web` 替换为实际 profile：
 
 ```powershell
-pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.3.0.tgz"
+pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.3.1.tgz"
 ```
 
 默认两项均开启。插件启用或停用时仍需应用／撤销一次前端补丁，可能触发一次 Chat 更新；保存开关不触发该流程。
@@ -70,7 +70,7 @@ pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.
 ```powershell
 npm config set '@shenjackyuanjie:registry' 'https://npm.pkg.github.com' --location=user
 npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg.github.com
-pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.0
+pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.1
 ```
 
 登录时 Username 填 GitHub 用户名，Password 填 PAT。首次发布后需在 GitHub 的 Package settings 中确认包可见性为 Public。
@@ -88,14 +88,14 @@ pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.0
 项目使用 Node.js 内置模块，以及 DSH 同版本的 `@deepseek-ai/schemastery` 声明原生 Config；无安装脚本、无编译构建步骤。Client 使用宿主 React，不打包另一份 React。代码风格由 Prettier 统一。
 
 ```powershell
-npm ci --ignore-scripts
-npm run format:check
-npm run check
-npm test
-npm run pack
+pnpm install --frozen-lockfile
+pnpm run format:check
+pnpm run check
+pnpm test
+pnpm run pack
 ```
 
-需要改写格式时执行 `npm run format`。
+需要改写格式时执行 `pnpm run format`。
 
 生成的归档位于 `dist/`。发行文件白名单由 [package.json](./package.json) 的 `files` 字段控制，不包含测试、Git 数据、备份、日志或凭据。
 
@@ -127,6 +127,6 @@ node test.mjs "D:\实际路径\dsh-client-ui-chat\lib\client.js"
 
 源码公开托管于 [GitHub：shenjackyuanjie/dsh-expand-think](https://github.com/shenjackyuanjie/dsh-expand-think)，包发布在 GitHub Packages 的 `@shenjackyuanjie` scope 下。
 
-发布用 `npm publish`（`publishConfig` 已固定 registry 与 public 访问）。GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。
+发布用 `pnpm publish`（`publishConfig` 已固定 registry 与 public 访问）。GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。
 
 以 [MIT 许可证](./LICENSE)发布。

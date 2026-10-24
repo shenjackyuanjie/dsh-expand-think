@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { Script } from 'node:vm';
-import { patchSource, supportedVersion, targetModule } from './patch-core.js';
+import { patchSource, supportedVersions, targetModule } from './patch-core.js';
 import { Config } from './settings.js';
 
 export { Config };
@@ -31,9 +31,13 @@ function replaceFile(target, before, after) {
 
 function validateTarget(target) {
   const manifest = JSON.parse(readFileSync(resolve(dirname(target), '../package.json'), 'utf8'));
-  if (manifest.name !== targetModule || manifest.version !== supportedVersion) {
+  if (manifest.name !== targetModule || !supportedVersions.includes(manifest.version)) {
     throw new Error(
-      '仅支持 ' + targetModule + '@' + supportedVersion + '；当前目标不匹配，请重新适配。',
+      '仅支持 ' +
+        targetModule +
+        '@' +
+        supportedVersions.join(' / ') +
+        '；当前目标不匹配，请重新适配。',
     );
   }
 }

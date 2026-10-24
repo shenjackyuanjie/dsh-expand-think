@@ -14,6 +14,7 @@ import {
   patchSource,
   readExpandThnkOptions,
   supportedVersion,
+  supportedVersions,
   syncReasoningDisclosure,
   targetModule,
 } from './patch-core.js';
@@ -309,6 +310,20 @@ test('不支持的版本激活失败，保留原文件并清理订阅', () =>
     original,
     '0.2.2',
   ));
+for (const version of supportedVersions) {
+  test('支持的宿主版本可直接应用与还原：' + version, () =>
+    lifecycle(
+      (state) => {
+        state.mount();
+        assert.equal(state.read(), patched);
+        state.unmount();
+        assert.equal(state.read(), original);
+      },
+      original,
+      version,
+    ),
+  );
+}
 test('目标结构不匹配时不修改文件', () =>
   lifecycle((state) => {
     assert.throws(() => state.mount(), /未唯一匹配/);

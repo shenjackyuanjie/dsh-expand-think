@@ -1,10 +1,18 @@
 {
-  "name": "dsh-expand-thnk",
-  "version": "0.2.2",
+  "name": "@shenjackyuanjie/dsh-expand-think",
+  "version": "0.3.0",
   "description": "thinking 输出时自动展开，结束后自动收起，保留手动查看；启停由 DSH 插件管理器管理。",
   "private": true,
   "type": "module",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shenjackyuanjie/dsh-expand-thnk.git"
+  },
+  "homepage": "https://github.com/shenjackyuanjie/dsh-expand-thnk#readme",
+  "bugs": {
+    "url": "https://github.com/shenjackyuanjie/dsh-expand-thnk/issues"
+  },
   "engines": {
     "node": ">=22.19.0",
     "dsh": "0.2.1-rc.2"

@@ -6,7 +6,7 @@ import { patchSource, supportedVersion, targetModule } from './patch-core.js';
 import { Config } from './settings.js';
 
 export { Config };
-export const name = 'dsh-expand-thnk';
+export const name = 'dsh-expand-think';
 export const inject = ['clientModules', 'settings'];
 
 // 原子替换，防止 HMR 读取半截文件；只编译检查，不运行浏览器代码。
@@ -32,7 +32,9 @@ function replaceFile(target, before, after) {
 function validateTarget(target) {
   const manifest = JSON.parse(readFileSync(resolve(dirname(target), '../package.json'), 'utf8'));
   if (manifest.name !== targetModule || manifest.version !== supportedVersion) {
-    throw new Error('仅支持 ' + targetModule + '@' + supportedVersion + '；当前目标不匹配，请重新适配。');
+    throw new Error(
+      '仅支持 ' + targetModule + '@' + supportedVersion + '；当前目标不匹配，请重新适配。',
+    );
   }
 }
 
@@ -64,8 +66,11 @@ export function apply(ctx) {
     };
 
     const unsubscribe = modules.onGraphChanged(() => {
-      try { synchronize(); }
-      catch (error) { ctx.logger.warn('思考自动展开补丁未更新：' + error.message); }
+      try {
+        synchronize();
+      } catch (error) {
+        ctx.logger.warn('思考自动展开补丁未更新：' + error.message);
+      }
     });
     const restore = () => {
       active = false;
@@ -82,8 +87,9 @@ export function apply(ctx) {
       }
       managed.clear();
     };
-    try { synchronize(); }
-    catch (error) {
+    try {
+      synchronize();
+    } catch (error) {
       restore();
       throw error;
     }

@@ -1,9 +1,10 @@
 window.__ModuleLoader__.load({
-  id: 'dsh-expand-thnk',
+  id: '@shenjackyuanjie/dsh-expand-think',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const namespace = 'dsh-expand-thnk';
+    const bundleKey = '@shenjackyuanjie/dsh-expand-think';
+    const namespace = 'dsh-expand-think';
     const labels = {
       title: '思考显示设置',
       summary: '分别控制 thinking 输出时展开和结束后收起。',
@@ -12,8 +13,12 @@ window.__ModuleLoader__.load({
       autoCollapse: '结束后自动收起',
       autoCollapseHint: 'thinking 转为回答、工具调用或结束时收起；关闭后保留当前开合状态。',
       hint: '默认均开启。修改后点击保存；设置保存在当前 profile，从下一次思考状态切换起使用，不重载聊天界面。',
-      save: '保存设置', saving: '保存中…', saved: '设置已保存',
-      discard: '放弃修改', loading: '正在读取设置…', unavailable: '设置暂不可用，请确认插件已启用。',
+      save: '保存设置',
+      saving: '保存中…',
+      saved: '设置已保存',
+      discard: '放弃修改',
+      loading: '正在读取设置…',
+      unavailable: '设置暂不可用，请确认插件已启用。',
       readOnly: '当前 profile 的设置为只读。',
       failed: '保存未成功，修改已保留。设置可能已在其他页面更改，请重新载入后再试。',
     };
@@ -37,9 +42,13 @@ window.__ModuleLoader__.load({
 
     // 纯数据操作，保存时一次提交两个字段，并带上开始编辑时的版本号。
     function createDraft(snapshot, field, checked, previous) {
-      if (!['autoExpand', 'autoCollapse'].includes(field) || typeof checked !== 'boolean') throw new Error('无效设置项。');
+      if (!['autoExpand', 'autoCollapse'].includes(field) || typeof checked !== 'boolean')
+        throw new Error('无效设置项。');
       const values = previous?.values ?? snapshot.value ?? { autoExpand: true, autoCollapse: true };
-      return { revision: previous?.revision ?? snapshot.revision, values: { ...values, [field]: checked } };
+      return {
+        revision: previous?.revision ?? snapshot.revision,
+        values: { ...values, [field]: checked },
+      };
     }
     function operations(values) {
       return ['autoExpand', 'autoCollapse'].map((field) => {
@@ -50,10 +59,17 @@ window.__ModuleLoader__.load({
 
     // 插件自有的只读状态桥接。读取原生表单镜像，不复制配置，不写宿主 DOM。
     function installRuntimeBridge(form) {
-      const key = Symbol.for('dsh-expand-thnk/runtime');
-      const bridge = { getOptions() { const snapshot = form.getSnapshot(); return snapshot.status === 'ready' ? snapshot.value : undefined; } };
+      const key = Symbol.for('dsh-expand-think/runtime');
+      const bridge = {
+        getOptions() {
+          const snapshot = form.getSnapshot();
+          return snapshot.status === 'ready' ? snapshot.value : undefined;
+        },
+      };
       globalThis[key] = bridge;
-      return () => { if (globalThis[key] === bridge) delete globalThis[key]; };
+      return () => {
+        if (globalThis[key] === bridge) delete globalThis[key];
+      };
     }
 
     function SettingsPage({ view, useSettings, saveSettings, t }) {
@@ -63,48 +79,122 @@ window.__ModuleLoader__.load({
       const [message, setMessage] = React.useState('');
       const [error, setError] = React.useState(false);
       const alive = React.useRef(true);
-      React.useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+      React.useEffect(() => {
+        alive.current = true;
+        return () => {
+          alive.current = false;
+        };
+      }, []);
       if (view === 'summary') return t('summary');
       const status = snapshot.status;
       const ready = status === 'ready' && snapshot.value !== undefined;
       const disabled = busy || !ready || !snapshot.writable;
       const values = draft?.values ?? snapshot.value ?? { autoExpand: true, autoCollapse: true };
-      const dirty = draft !== null && ['autoExpand', 'autoCollapse'].some((field) => draft.values[field] !== snapshot.value?.[field]);
+      const dirty =
+        draft !== null &&
+        ['autoExpand', 'autoCollapse'].some(
+          (field) => draft.values[field] !== snapshot.value?.[field],
+        );
       const edit = (field) => {
         setDraft((previous) => createDraft(snapshot, field, !values[field], previous));
-        setMessage(''); setError(false);
+        setMessage('');
+        setError(false);
       };
       const save = async () => {
         if (disabled || !dirty || draft === null) return;
-        setBusy(true); setMessage(''); setError(false);
+        setBusy(true);
+        setMessage('');
+        setError(false);
         try {
           const accepted = await saveSettings(operations(draft.values), draft.revision);
           if (!alive.current) return;
-          if (accepted) { setDraft(null); setMessage(t('saved')); }
-          else { setMessage(t('failed')); setError(true); }
+          if (accepted) {
+            setDraft(null);
+            setMessage(t('saved'));
+          } else {
+            setMessage(t('failed'));
+            setError(true);
+          }
         } catch {
-          if (alive.current) { setMessage(t('failed')); setError(true); }
-        } finally { if (alive.current) setBusy(false); }
+          if (alive.current) {
+            setMessage(t('failed'));
+            setError(true);
+          }
+        } finally {
+          if (alive.current) setBusy(false);
+        }
       };
-      const row = (field) => h('div', { className: 'dsh-et-row', key: field },
-        h('div', null,
-          h('div', { id: 'dsh-et-' + field, className: 'dsh-et-label' }, t(field)),
-          h('div', { id: 'dsh-et-' + field + '-hint', className: 'dsh-et-detail' }, t(field + 'Hint'))),
-        h('button', {
-          type: 'button', className: 'dsh-et-switch', role: 'switch', 'aria-checked': values[field],
-          'aria-labelledby': 'dsh-et-' + field, 'aria-describedby': 'dsh-et-' + field + '-hint', disabled,
-          onClick: () => edit(field),
-        }));
-      return h('section', { className: 'dsh-et-settings', 'aria-label': t('title') },
-        h('style', null, css), h('h3', null, t('title')),
-        h('p', { className: 'dsh-et-hint' }, ready ? t('hint') : t(status === 'loading' ? 'loading' : 'unavailable')),
-        ready && row('autoExpand'), ready && row('autoCollapse'),
+      const row = (field) =>
+        h(
+          'div',
+          { className: 'dsh-et-row', key: field },
+          h(
+            'div',
+            null,
+            h('div', { id: 'dsh-et-' + field, className: 'dsh-et-label' }, t(field)),
+            h(
+              'div',
+              { id: 'dsh-et-' + field + '-hint', className: 'dsh-et-detail' },
+              t(field + 'Hint'),
+            ),
+          ),
+          h('button', {
+            type: 'button',
+            className: 'dsh-et-switch',
+            role: 'switch',
+            'aria-checked': values[field],
+            'aria-labelledby': 'dsh-et-' + field,
+            'aria-describedby': 'dsh-et-' + field + '-hint',
+            disabled,
+            onClick: () => edit(field),
+          }),
+        );
+      return h(
+        'section',
+        { className: 'dsh-et-settings', 'aria-label': t('title') },
+        h('style', null, css),
+        h('h3', null, t('title')),
+        h(
+          'p',
+          { className: 'dsh-et-hint' },
+          ready ? t('hint') : t(status === 'loading' ? 'loading' : 'unavailable'),
+        ),
+        ready && row('autoExpand'),
+        ready && row('autoCollapse'),
         ready && !snapshot.writable && h('p', { className: 'dsh-et-hint' }, t('readOnly')),
-        ready && h('div', { className: 'dsh-et-footer' },
-          h('button', { type: 'button', className: 'dsh-et-button dsh-et-button-primary', disabled: disabled || !dirty, onClick: save }, t(busy ? 'saving' : 'save')),
-          draft && h('button', { type: 'button', className: 'dsh-et-button', disabled: busy, onClick: () => { setDraft(null); setMessage(''); setError(false); } }, t('discard')),
-          !error && message && h('span', { role: 'status', className: 'dsh-et-status' }, message)),
-        error && h('div', { role: 'alert', className: 'dsh-et-error' }, message));
+        ready &&
+          h(
+            'div',
+            { className: 'dsh-et-footer' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'dsh-et-button dsh-et-button-primary',
+                disabled: disabled || !dirty,
+                onClick: save,
+              },
+              t(busy ? 'saving' : 'save'),
+            ),
+            draft &&
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dsh-et-button',
+                  disabled: busy,
+                  onClick: () => {
+                    setDraft(null);
+                    setMessage('');
+                    setError(false);
+                  },
+                },
+                t('discard'),
+              ),
+            !error && message && h('span', { role: 'status', className: 'dsh-et-status' }, message),
+          ),
+        error && h('div', { role: 'alert', className: 'dsh-et-error' }, message),
+      );
     }
 
     return {
@@ -113,10 +203,20 @@ window.__ModuleLoader__.load({
         ctx.effect(() => ctx.locale.register(namespace, { zh: labels, en: labels }));
         const form = ctx.configForms.get(namespace);
         ctx.effect(() => installRuntimeBridge(form));
-        ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
-          name: 'plugins.bundle.config', key: namespace, locale: namespace,
-          inject: () => ({ hooks: { settings: form }, saveSettings: (ops, revision) => form.mutate(ops, revision) }),
-        }, SettingsPage));
+        ctx.slots.inject('plugins.bundle.config', () =>
+          ctx.slots.register(
+            {
+              name: 'plugins.bundle.config',
+              key: bundleKey,
+              locale: namespace,
+              inject: () => ({
+                hooks: { settings: form },
+                saveSettings: (ops, revision) => form.mutate(ops, revision),
+              }),
+            },
+            SettingsPage,
+          ),
+        );
       },
     };
   },

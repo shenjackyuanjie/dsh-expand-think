@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "dsh-expand-thnk · 思考自动展开",
+    "title": "dsh-expand-think · 思考自动展开",
     "description": "thinking 输出时自动展开，结束后自动收起，并保留手动查看。两项行为可独立设置并保存到当前 profile；停用时自动还原补丁。"
   }
 }

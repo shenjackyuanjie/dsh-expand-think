@@ -1,5 +1,17 @@
 # 版本记录
 
+## 0.3.0 — 2026-10-24
+
+包名、行 id 与内部标识全部改为 `dsh-expand-think`，属不兼容变更，需要卸载旧包后重装。
+
+- 包名改为 `@shenjackyuanjie/dsh-expand-think`，patch 行 id 为 `dsh-expand-think`，Client 模块 id 与详情页插槽 key 随之统一。
+- 插件详情页插槽 key 现在取 bundle 包名，配置 namespace 取行 id，两者分开声明并在回归中校验一致。
+- 运行时桥接键改为 `dsh-expand-think/runtime`；旧键不再读取，旧包启用的补丁会被新插件识别并接管。
+- 删除 0.1.0、早期 `thinking-auto-collapse` 手动补丁，以及 v1／v2 补丁格式的全部迁移分支，只识别当前补丁标记。
+- 兼容范围收敛为 DSH `0.2.1-rc.2`，不保留旧宿主版本的适配或豁免。
+- 引入 Prettier，新增 `format` / `format:check` 脚本，源码与文档统一格式；发行文件清单不变。
+- 离线回归调整为 42 项，新增包名／行 id／模块 id／插槽 key 一致性与桥接键一致性检查。
+
 ## 0.2.2 — 2026-10-24
 
 - 根据使用者要求，核对当前 Agent 工具集合未发现其他插件专用的同类设置 Tool 后，移除 `expand_thnk_settings`、注册代码及 Host 的 `tools` 依赖。

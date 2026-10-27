@@ -1,6 +1,6 @@
 // 纯文本变换；仅调整 ReasoningRow，不导入 React，也不执行前端代码。
-// rc.2 与 rc.3 的 ReasoningRow 锚点完全相同，共用同一份补丁。
-export const supportedVersions = ['0.2.1-rc.2', '0.2.1-rc.3'];
+// rc.2、rc.3 与 rc.4 的 ReasoningRow 锚点完全相同，共用同一份补丁。
+export const supportedVersions = ['0.2.1-rc.2', '0.2.1-rc.3', '0.2.1-rc.4'];
 export const supportedVersion = supportedVersions[supportedVersions.length - 1];
 export const targetModule = '@deepseek-ai/dsh-client-ui-chat';
 export const marker = '// 本地补丁：dsh-expand-think/v1';

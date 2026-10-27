@@ -1,6 +1,6 @@
 {
   "name": "@shenjackyuanjie/dsh-expand-think",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "thinking 输出时自动展开，结束后自动收起，保留手动查看；启停由 DSH 插件管理器管理。",
   "type": "module",
   "license": "MIT",
@@ -18,7 +18,7 @@
   },
   "engines": {
     "node": ">=22.19.0",
-    "dsh": "0.2.1-rc.2 || 0.2.1-rc.3"
+    "dsh": "0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.1-rc.4"
   },
   "exports": {
     ".": "./index.js",

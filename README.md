@@ -51,10 +51,10 @@ DSH 的 reasoning Body Slot 仅在正文已经展开后挂载，无法控制外�
 
 ### 安装本地 tgz
 
-在 DSH 插件管理器中选择 `shenjackyuanjie-dsh-expand-think-0.3.2.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。命令行在安装了 DSH 的目录执行，`web` 替换为实际 profile：
+在 DSH 插件管理器中选择 `shenjackyuanjie-dsh-expand-think-0.3.3.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。命令行在安装了 DSH 的目录执行，`web` 替换为实际 profile：
 
 ```powershell
-pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.3.2.tgz"
+pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.3.3.tgz"
 ```
 
 插件启用或停用时需要应用／撤销一次前端补丁，可能触发一次 Chat 更新；保存开关不触发该流程。
@@ -66,7 +66,7 @@ pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.
 ```powershell
 npm config set '@shenjackyuanjie:registry' 'https://npm.pkg.github.com' --location=user
 npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg.github.com
-pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.2
+pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.3
 ```
 
 **从 0.2.2 及更早版本升级：** 包名已改为 `@shenjackyuanjie/dsh-expand-think`，行 id 为 `dsh-expand-think`。先在插件管理器卸载旧的 `dsh-expand-thnk`，再安装新包；旧包名的设置不会迁移，新包装好后按默认值（两项均开启）开始。旧版本留下的本地补丁会在新插件启用时被识别并接管，不需要手动清理。

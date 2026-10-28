@@ -1,5 +1,7 @@
 # dsh-expand-think
 
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](./LICENSE)
+
 **thinking 输出时自动展开，结束后自动收起，保留手动查看。**
 
 可安装到 DeepSeek Harness 的 Cordis bundle，包名 `@shenjackyuanjie/dsh-expand-think`。安装后在 DSH 插件管理器中管理启用和停用，不需要手动运行补丁脚本。
@@ -14,6 +16,12 @@
 - 不改变回答内容、工具调用、模型请求或会话记录，也不调用额外模型。
 
 外层的“工作步骤展示”和过程分组仍遵循 DSH 原有设置。本插件只管理 thinking 自身的开合，不额外调整外层分组。
+
+## 展示
+
+![thinking 自动展开与自动收起（示意图）](./docs/thinking-auto-expand.png)
+
+> 上图为界面示意图，非真实运行截图，效果以实际插件行为为准。
 
 ## 思考显示设置
 
@@ -129,4 +137,4 @@ node test.mjs "D:\实际路径\dsh-client-ui-chat\lib\client.js"
 
 发布用 `pnpm publish`（`publishConfig` 已固定 registry 与 public 访问）。GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。
 
-以 [MIT 许可证](./LICENSE)发布。
+以 [GNU GPL-3.0-or-later 许可证](./LICENSE)发布，Copyright (c) 2026 shenjackyuanjie。

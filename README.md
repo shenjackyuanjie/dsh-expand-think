@@ -69,8 +69,6 @@ npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg
 pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.3
 ```
 
-**从 0.2.2 及更早版本升级：** 包名已改为 `@shenjackyuanjie/dsh-expand-think`，行 id 为 `dsh-expand-think`。先在插件管理器卸载旧的 `dsh-expand-thnk`，再安装新包；旧包名的设置不会迁移，新包装好后按默认值（两项均开启）开始。旧版本留下的本地补丁会在新插件启用时被识别并接管，不需要手动清理。
-
 **停用或卸载：** 在插件管理器中停用或卸载 `dsh-expand-think`，正常停用会撤销思考区块补丁并通知前端更新。启用期间不要另外运行手工脚本修改 Chat 产物，以免两个管理入口互相覆盖。
 
 ## 开发与验证

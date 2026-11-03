@@ -20,17 +20,43 @@ import {
 } from './patch-core.js';
 
 const bundleKey = '@shenjackyuanjie/dsh-expand-think';
+// 三个稳定锚点：创建开合状态、手动开合回调、展开正文容器与限高标记。
 const fixture =
   '\t\tconst ReasoningRow = (0, react.memo)(function ReasoningRow({ text, running, useDisclosure }) {\n' +
   '\t\t\tconst { expanded, toggle } = useDisclosure();\n' +
   '\t\t\tconst summaryText = running ? latestCompletedParagraphFirstLine(text) : firstLine(text);\n' +
-  '\t\t\treturn expanded;\n\t\t});\n';
+  '\t\t\treturn (0, react_jsx_runtime.jsxs)("div", {\n' +
+  '\t\t\t\t"data-preview": preview || void 0,\n' +
+  '\t\t\t\tclassName: ReasoningRow_module_css_default.thinkBody,\n' +
+  '\t\t\t\tchildren: (0, react_jsx_runtime.jsx)(DisclosureRow, {\n' +
+  '\t\t\t\t\tonToggle: toggle,\n' +
+  '\t\t\t\t})\n' +
+  '\t\t\t});\n' +
+  '\t\t});\n';
 // 可传入实际 DSH 前端产物路径，复核已安装版本中的精确锚点。
 const original = patchSource(
   process.argv[2] ? readFileSync(process.argv[2], 'utf8') : fixture,
   true,
 );
 const patched = patchSource(original);
+const componentLine = '\t\tconst ReasoningRow = (0, react.memo)(function ReasoningRow(';
+const disclosureTailText = '\t\t\t}, [running, setExpanded]);\n';
+// 模拟 0.3.4 打出的单段补丁：同样的 helper 前缀，旧版三行开合逻辑。
+function legacyPatch(source, patchedText) {
+  const helperStart = patchedText.indexOf('\t\t' + marker);
+  const helperEnd = patchedText.indexOf(componentLine, helperStart);
+  const helperText = patchedText.slice(helperStart, helperEnd);
+  return source
+    .replace(componentLine, helperText + componentLine)
+    .replace(
+      '\t\t\tconst { expanded, toggle } = useDisclosure();\n',
+      '\t\t\tconst { expanded, toggle, setExpanded } = useDisclosure();\n' +
+        '\t\t\tconst previousRunning = (0, react.useRef)(false);\n' +
+        '\t\t\t(0, react.useLayoutEffect)(() => {\n' +
+        '\t\t\t\tsyncReasoningDisclosure(previousRunning, running, setExpanded, readExpandThnkOptions());\n' +
+        disclosureTailText,
+    );
+}
 const start = patched.indexOf('function syncReasoningDisclosure(');
 const end = patched.indexOf('\n\t\tconst ReasoningRow =', start);
 const sync = vm.runInNewContext('(' + patched.slice(start, end).trim() + ')');
@@ -76,6 +102,9 @@ async function lifecycle(run, source = original, version = supportedVersion, opt
   const config = {
     autoExpand: { get: () => current.autoExpand },
     autoCollapse: { get: () => current.autoCollapse },
+    limitHeight: { get: () => current.limitHeight },
+    maxLines: { get: () => current.maxLines },
+    collapseAnimation: { get: () => current.collapseAnimation },
   };
   const settingsListeners = new Set();
   const settings = {
@@ -254,21 +283,103 @@ test('补丁之外的本地改动原样保留', () => {
   const custom = original + '\n// 其他本地修改\n';
   assert.equal(patchSource(patchSource(custom), true), custom);
 });
+test('接管 0.3.5 的限高补丁并升级到跟随滚动 + 收起动画', () => {
+  const helperStart = patched.indexOf('\t\t' + marker);
+  const helperEnd = patched.indexOf(componentLine, helperStart);
+  const helperText = patched.slice(helperStart, helperEnd);
+  const v035Disclosure =
+    '\t\t\tconst { expanded, toggle, setExpanded } = useDisclosure();\n' +
+    '\t\t\tconst previousRunning = (0, react.useRef)(false);\n' +
+    '\t\t\tconst [autoClamped, setAutoClamped] = (0, react.useState)(false);\n' +
+    '\t\t\tconst toggleUnclamped = () => {\n' +
+    '\t\t\t\tsetAutoClamped(false);\n' +
+    '\t\t\t\ttoggle();\n' +
+    '\t\t\t};\n' +
+    '\t\t\t(0, react.useLayoutEffect)(() => {\n' +
+    '\t\t\t\tconst applied = syncReasoningDisclosure(previousRunning, running, setExpanded, readExpandThnkOptions());\n' +
+    '\t\t\t\tif (applied) setAutoClamped(running);\n' +
+    '\t\t\t}, [running, setExpanded]);\n';
+  const v035 = original
+    .replace(componentLine, helperText + componentLine)
+    .replace('\t\t\tconst { expanded, toggle } = useDisclosure();\n', v035Disclosure)
+    .replace(
+      '\t\t\t\t"data-preview": preview || void 0,\n',
+      '\t\t\t\t"data-preview": preview || void 0,\n\t\t\t\t"data-dsh-et-clamped": autoClamped || void 0,\n',
+    )
+    .replace('\n\t\t\t\t\tonToggle: toggle,\n', '\n\t\t\t\t\tonToggle: toggleUnclamped,\n')
+    .replace(
+      '\t\t\t\tclassName: ReasoningRow_module_css_default.thinkBody,\n',
+      '\t\t\t\tclassName: ReasoningRow_module_css_default.thinkBody + " dsh-et-body",\n',
+    );
+  assert.equal(patchSource(v035, true), original);
+  const upgraded = patchSource(v035);
+  assert.ok(upgraded.includes('"data-dsh-et-closing": autoClosing || void 0,'));
+  assert.ok(upgraded.includes('requestAnimationFrame(follow)'));
+  assert.equal(patchSource(upgraded), upgraded);
+  assert.equal(patchSource(upgraded, true), original);
+});
+test('接管 0.3.4 及更早的单段补丁并升级到限高版本', () => {
+  const legacy = legacyPatch(original, patched);
+  assert.equal(patchSource(legacy, true), original);
+  const upgraded = patchSource(legacy);
+  assert.ok(upgraded.includes('"data-dsh-et-clamped": autoClamped || void 0,'));
+  assert.equal(patchSource(upgraded), upgraded);
+  assert.equal(patchSource(upgraded, true), original);
+});
+test('旧补丁段落被其他代码改动时拒绝覆盖', () => {
+  const legacy = legacyPatch(original, patched);
+  const tampered = legacy.replace(
+    disclosureTailText,
+    '\t\t\t\t// 其他插件追加\n' + disclosureTailText,
+  );
+  assert.throws(() => patchSource(tampered, true), /已被修改/);
+});
 test('未知、重复、残缺锚点拒绝覆盖', () => {
   assert.throws(() => patchSource('其他代码'), /未唯一匹配/);
   assert.throws(() => patchSource(original + original), /未唯一匹配/);
   assert.throws(
     () => patchSource(patched.replace('previousRunning, running, setExpanded', 'changed')),
-    /未唯一匹配/,
+    /已被修改|未唯一匹配/,
   );
 });
 test('组件使用布局阶段同步，沿用原有手动开合状态', () => {
   assert.ok(patched.includes('const { expanded, toggle, setExpanded } = useDisclosure();'));
-  assert.ok(
-    patched.includes(
-      '(0, react.useLayoutEffect)(() => {\n\t\t\t\tsyncReasoningDisclosure(previousRunning, running, setExpanded, readExpandThnkOptions());\n\t\t\t}, [running, setExpanded]);',
-    ),
-  );
+  assert.ok(patched.includes('if (applied && running) setAutoClamped(true);'));
+  assert.ok(patched.includes('onToggle: toggleUnclamped,'));
+});
+test('补丁写入限高、滚动跟随与收起动画所需的标记', () => {
+  assert.ok(patched.includes('ReasoningRow_module_css_default.thinkBody + " dsh-et-body"'));
+  assert.ok(patched.includes('"data-dsh-et-clamped": autoClamped || void 0,'));
+  assert.ok(patched.includes('"data-dsh-et-closing": autoClosing || void 0,'));
+  assert.ok(patched.includes('ref: rootRef,'));
+  assert.ok(patched.includes('requestAnimationFrame(follow)'));
+  assert.ok(patched.includes('cancelAnimationFrame(frame)'));
+  assert.ok(patched.includes('--dsh-et-open-height'));
+  assert.ok(patched.includes('options.collapseAnimation !== false'));
+});
+test('同步函数报告本次切换是否由自动逻辑执行', () => {
+  const previous = { current: false };
+  const calls = [];
+  const setExpanded = (value) => calls.push(value);
+  const options = { autoExpand: true, autoCollapse: true };
+  assert.equal(sync(previous, true, setExpanded, options), true);
+  assert.equal(sync(previous, true, setExpanded, options), false);
+  assert.equal(sync(previous, false, setExpanded, options), true);
+  assert.equal(sync(previous, true, setExpanded, { autoExpand: false, autoCollapse: true }), false);
+  assert.deepEqual(calls, [true, false]);
+});
+test('设置归一化补齐限高与动画默认值并校验行数范围', () => {
+  assert.deepEqual(normalizeOptions({}), {
+    autoExpand: true,
+    autoCollapse: true,
+    limitHeight: true,
+    maxLines: 9,
+    collapseAnimation: true,
+  });
+  assert.throws(() => normalizeOptions({ maxLines: 2 }), /3–60/);
+  assert.throws(() => normalizeOptions({ maxLines: 61 }), /3–60/);
+  assert.throws(() => normalizeOptions({ maxLines: 9.5 }), /3–60/);
+  assert.throws(() => normalizeOptions({ limitHeight: 'yes' }), /布尔值/);
 });
 test('插件启用时应用，停用时还原，并通知前端热更新', () =>
   lifecycle((state) => {
@@ -385,14 +496,26 @@ test('关闭自动展开时，手动展开的正文仍按收起开关执行', ()
   assert.equal(state.expanded, false);
   assert.deepEqual(state.calls, [true, false]);
 });
-test('Config 默认均开启，两个布尔值均为真正的 volatile 字段', () => {
-  assert.deepEqual(readSettings(Config({})), { autoExpand: true, autoCollapse: true });
+test('Config 默认均开启，五个字段均为真正的 volatile 字段', () => {
+  assert.deepEqual(readSettings(Config({})), {
+    autoExpand: true,
+    autoCollapse: true,
+    limitHeight: true,
+    maxLines: 9,
+    collapseAnimation: true,
+  });
   assert.deepEqual(readSettings(Config({ autoExpand: false, autoCollapse: true })), {
     autoExpand: false,
     autoCollapse: true,
+    limitHeight: true,
+    maxLines: 9,
+    collapseAnimation: true,
   });
+  assert.equal(readSettings(Config({ limitHeight: false, maxLines: 20 })).maxLines, 20);
+  assert.equal(readSettings(Config({ collapseAnimation: false })).collapseAnimation, false);
   assert.throws(() => Config({ autoExpand: 'false' }));
   assert.throws(() => Config({ autoCollapse: 0 }));
+  assert.throws(() => Config({ maxLines: 1 }));
 });
 test('未知字段、空值和错误类型不被当成有效配置', () => {
   assert.throws(() => normalizeOptions({ unknown: true }), /未知设置/);
@@ -404,7 +527,14 @@ test('连续保存只更新配置，不改写 Chat 文件或触发额外 HMR', (
     state.mount();
     const before = state.read();
     const result = await state.configure({ autoExpand: false });
-    assert.deepEqual(result, { autoExpand: false, autoCollapse: true, revision: 1 });
+    assert.deepEqual(result, {
+      autoExpand: false,
+      autoCollapse: true,
+      limitHeight: true,
+      maxLines: 9,
+      collapseAnimation: true,
+      revision: 1,
+    });
     assert.equal(state.read(), before);
     assert.equal(state.revisions, 1);
     await state.configure({ autoCollapse: false });
@@ -435,6 +565,9 @@ test('原生设置保留 revision 检查，旧版本写入被拒绝', () =>
     assert.deepEqual(state.settings.describe()[0].value, {
       autoExpand: false,
       autoCollapse: true,
+      limitHeight: true,
+      maxLines: 9,
+      collapseAnimation: true,
     });
     assert.equal(state.settings.describe()[0].revision, 1);
   }));
@@ -450,7 +583,7 @@ const client = readFileSync(new URL('./client.js', import.meta.url), 'utf8');
 const manifest = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const patch = readFileSync(new URL('./cordis.patch.yml', import.meta.url), 'utf8');
 const pureFormSource = client.slice(
-  client.indexOf('function createDraft('),
+  client.indexOf('const clampDefaults = '),
   client.indexOf('function SettingsPage('),
 );
 const form = vm.runInNewContext(
@@ -460,34 +593,82 @@ const form = vm.runInNewContext(
     '\n({createDraft, operations, installRuntimeBridge, readExpandThnkOptions})',
 );
 test('表单连续编辑保持最初 revision，未触碰字段不丢失', () => {
-  const first = form.createDraft(
-    { value: { autoExpand: true, autoCollapse: true }, revision: 4 },
-    'autoExpand',
-    false,
-    null,
-  );
-  const second = form.createDraft(
-    { value: { autoExpand: true, autoCollapse: true }, revision: 5 },
-    'autoCollapse',
-    false,
-    first,
-  );
-  assert.equal(second.revision, 4);
+  const base = {
+    autoExpand: true,
+    autoCollapse: true,
+    limitHeight: true,
+    maxLines: 9,
+    collapseAnimation: true,
+  };
+  const first = form.createDraft({ value: base, revision: 4 }, 'autoExpand', false, null);
+  const second = form.createDraft({ value: base, revision: 5 }, 'autoCollapse', false, first);
+  const third = form.createDraft({ value: base, revision: 6 }, 'maxLines', 20, second);
+  assert.equal(third.revision, 4);
   assert.equal(
-    JSON.stringify(second.values),
-    JSON.stringify({ autoExpand: false, autoCollapse: false }),
+    JSON.stringify(third.values),
+    JSON.stringify({
+      autoExpand: false,
+      autoCollapse: false,
+      limitHeight: true,
+      maxLines: 20,
+      collapseAnimation: true,
+    }),
   );
 });
-test('表单保存两个字段为同一次原子操作，false 不被遗漏', () => {
-  const ops = form.operations({ autoExpand: false, autoCollapse: true });
+test('表单保存全部字段为同一次原子操作，false 与行数不被遗漏', () => {
+  const ops = form.operations({
+    autoExpand: false,
+    autoCollapse: true,
+    limitHeight: false,
+    maxLines: 12,
+    collapseAnimation: false,
+  });
   assert.equal(
     JSON.stringify(ops),
     JSON.stringify([
       { op: 'set', path: ['autoExpand'], value: false },
       { op: 'set', path: ['autoCollapse'], value: true },
+      { op: 'set', path: ['limitHeight'], value: false },
+      { op: 'set', path: ['collapseAnimation'], value: false },
+      { op: 'set', path: ['maxLines'], value: 12 },
     ]),
   );
-  assert.throws(() => form.operations({ autoExpand: 'false', autoCollapse: true }), /布尔值/);
+  assert.throws(
+    () =>
+      form.operations({
+        autoExpand: 'false',
+        autoCollapse: true,
+        limitHeight: true,
+        maxLines: 9,
+        collapseAnimation: true,
+      }),
+    /布尔值/,
+  );
+  assert.throws(
+    () =>
+      form.operations({
+        autoExpand: true,
+        autoCollapse: true,
+        limitHeight: true,
+        maxLines: 2,
+        collapseAnimation: true,
+      }),
+    /3–60/,
+  );
+});
+test('行数编辑拒绝非整数与越界值', () => {
+  const base = {
+    autoExpand: true,
+    autoCollapse: true,
+    limitHeight: true,
+    maxLines: 9,
+    collapseAnimation: true,
+  };
+  const snapshot = { value: base, revision: 1 };
+  assert.throws(() => form.createDraft(snapshot, 'maxLines', 2, null), /3–60/);
+  assert.throws(() => form.createDraft(snapshot, 'maxLines', 9.5, null), /3–60/);
+  assert.throws(() => form.createDraft(snapshot, 'unknown', true, null), /无效设置项/);
+  assert.equal(form.createDraft(snapshot, 'maxLines', 60, null).values.maxLines, 60);
 });
 test('详情页注册插槽，保留保存失败、只读、可访问开关行为', () => {
   assert.ok(client.includes("name: 'plugins.bundle.config'"));

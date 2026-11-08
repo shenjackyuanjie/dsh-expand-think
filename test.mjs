@@ -1,8 +1,8 @@
-// 离线回归：只测试纯状态策略、文本变换和文件生命周期，不模拟 React 或 DOM。
+// 离线回归：纯状态、文本变换与生命周期；真实产物模式额外隔离执行原生 disclosure。
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 import { apply, Config, inject, name as pluginName } from './index.js';
@@ -737,3 +737,57 @@ test('状态桥接读取失败不影响原生 Chat，旧实例清理不删除新
     old();
   }
 });
+
+test('声明的宿主版本与运行时精确白名单一致', () => {
+  const manifest = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(manifest.engines.dsh.split(' || '), supportedVersions);
+  assert.ok(supportedVersions.includes('0.2.2-rc.1'));
+});
+
+test(
+  '真实 Chat 产物保留分段 running 与原生 disclosure setter 语义',
+  {
+    skip: process.argv[2] ? false : '传入真实 Chat client.js 后执行',
+  },
+  () => {
+    const manifest = JSON.parse(
+      readFileSync(resolve(dirname(process.argv[2]), '../package.json'), 'utf8'),
+    );
+    assert.equal(manifest.name, targetModule);
+    assert.ok(supportedVersions.includes(manifest.version));
+    assert.ok(original.includes('running: streaming && i === last,'));
+    assert.ok(original.includes('const { expanded, toggle } = useDisclosure();'));
+    // 执行官方 useDisclosure，控制其 state/callback 边界；不挂载 React 或 DOM。
+    const begin = original.indexOf('\t\tfunction useDisclosure(version = 0) {');
+    const end = original.indexOf('\n\t\t}', begin) + '\n\t\t}'.length;
+    assert.ok(begin >= 0 && end > begin);
+    let state = null;
+    const react = {
+      useState: () => [
+        state,
+        (value) => {
+          state = typeof value === 'function' ? value(state) : value;
+        },
+      ],
+      useCallback: (callback) => callback,
+    };
+    const useDisclosure = vm.runInNewContext('(' + original.slice(begin, end).trim() + ')', {
+      react,
+    });
+    const previous = { current: false };
+    assert.equal(useDisclosure().expanded, false);
+    sync(previous, true, useDisclosure().setExpanded);
+    assert.equal(useDisclosure().expanded, true);
+    useDisclosure().toggle();
+    sync(previous, true, useDisclosure().setExpanded);
+    assert.equal(useDisclosure().expanded, false);
+    sync(previous, false, useDisclosure().setExpanded);
+    sync(previous, true, useDisclosure().setExpanded);
+    assert.equal(useDisclosure().expanded, true);
+    assert.equal(useDisclosure(1).expanded, false);
+    sync(previous, false, useDisclosure(1).setExpanded);
+    assert.equal(useDisclosure(1).expanded, false);
+    new vm.Script(patched);
+    assert.equal(patchSource(patched, true), original);
+  },
+);

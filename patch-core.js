@@ -1,7 +1,13 @@
 // 纯文本变换；仅调整 ReasoningRow，不导入 React，也不执行前端代码。
-// rc.2 至 rc.5 的 ReasoningRow 锚点一致，共用同一份补丁：
-// rc.5 在创建开合状态之后插入了 thinking 正文归一化，因此锚点只取那一行。
-export const supportedVersions = ['0.2.1-rc.2', '0.2.1-rc.3', '0.2.1-rc.4', '0.2.1-rc.5'];
+// 已核对官方 npm 产物：0.2.1-rc.2 至 rc.5 与 0.2.2-rc.1 共用同一份补丁。
+// 正文归一化在创建开合状态之后，锚点仅取创建语句，不依赖 text 的声明位置。
+export const supportedVersions = [
+  '0.2.1-rc.2',
+  '0.2.1-rc.3',
+  '0.2.1-rc.4',
+  '0.2.1-rc.5',
+  '0.2.2-rc.1',
+];
 export const supportedVersion = supportedVersions[supportedVersions.length - 1];
 export const targetModule = '@deepseek-ai/dsh-client-ui-chat';
 export const marker = '// 本地补丁：dsh-expand-think/v1';

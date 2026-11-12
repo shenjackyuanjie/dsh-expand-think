@@ -9,6 +9,7 @@ import { apply, Config, inject, name as pluginName } from './index.js';
 import { readSettings } from './settings.js';
 import {
   bridgeKey,
+  layoutOf,
   marker,
   normalizeOptions,
   patchSource,
@@ -39,7 +40,25 @@ const original = patchSource(
   true,
 );
 const patched = patchSource(original);
+// 可读构建的断言固定在这个夹具上；传入真实产物时也只影响 original/patched。
+const fixtureOriginal = patchSource(fixture, true);
+const fixturePatched = patchSource(fixtureOriginal);
+// 传入真实产物时，用该产物自带的版本号驱动生命周期校验。
+const artifactVersion = process.argv[2]
+  ? JSON.parse(readFileSync(resolve(dirname(process.argv[2]), '../package.json'), 'utf8')).version
+  : undefined;
 const componentLine = '\t\tconst ReasoningRow = (0, react.memo)(function ReasoningRow(';
+const minifiedComponentLine = 'const ReasoningRow=(0,react.memo)(function ReasoningRow(';
+// 0.2.2-rc.2 起的压缩构建：同一组件、无缩进换行，锚点单独维护。
+const minifiedFixture =
+  minifiedComponentLine +
+  '{text:rawText,running,useDisclosure}){' +
+  'const{expanded,toggle}=useDisclosure();' +
+  'const content=expanded?(0,react_jsx_runtime.jsx)(`div`,{className:ReasoningRow_module_css_default.thinkBody,children:renderSlot(`conversation.chat.reasoning.body`,{rawText,running})}):void 0;' +
+  'return(0,react_jsx_runtime.jsxs)(`div`,{className:ReasoningRow_module_css_default.root,"data-expanded":expanded||void 0,"data-preview":preview||void 0,children:[(0,react_jsx_runtime.jsx)(DisclosureRow,{expandOnRowClick:true,onToggle:toggle,collapsedContent,children:content})]})});' +
+  'const afterReasoningRow=1;';
+const minifiedOriginal = patchSource(minifiedFixture, true);
+const minifiedPatched = patchSource(minifiedOriginal);
 const disclosureTailText = '\t\t\t}, [running, setExpanded]);\n';
 // 模拟 0.3.4 打出的单段补丁：同样的 helper 前缀，旧版三行开合逻辑。
 function legacyPatch(source, patchedText) {
@@ -57,8 +76,11 @@ function legacyPatch(source, patchedText) {
         disclosureTailText,
     );
 }
+// 两种构建形态的组件锚点不同，按实际补丁结果选择切片终点。
+const patchedComponentLine =
+  layoutOf(patched) === 'minified' ? minifiedComponentLine : componentLine;
 const start = patched.indexOf('function syncReasoningDisclosure(');
-const end = patched.indexOf('\n\t\tconst ReasoningRow =', start);
+const end = patched.indexOf(patchedComponentLine, start);
 const sync = vm.runInNewContext('(' + patched.slice(start, end).trim() + ')');
 
 function disclosure(running = false, options = {}) {
@@ -279,14 +301,35 @@ test('补丁可重复应用、精确撤销', () => {
   assert.equal(patchSource(original, true), original);
   assert.equal(patched.split(marker).length - 1, 1);
 });
+test('压缩构建使用独立锚点并共用同一套注入逻辑', () => {
+  assert.equal(layoutOf(minifiedOriginal), 'minified');
+  assert.equal(layoutOf(fixtureOriginal), 'readable');
+  assert.equal(patchSource(minifiedPatched), minifiedPatched);
+  assert.equal(patchSource(minifiedPatched, true), minifiedOriginal);
+  assert.equal(patchSource(minifiedOriginal, true), minifiedOriginal);
+  assert.equal(minifiedPatched.split(marker).length - 1, 1);
+  assert.ok(minifiedPatched.includes('onToggle:toggleUnclamped'));
+  assert.ok(minifiedPatched.includes('thinkBody+" dsh-et-body"'));
+  assert.ok(minifiedPatched.includes('"data-dsh-et-clamped":autoClamped||void 0'));
+  assert.ok(minifiedPatched.includes('"data-dsh-et-closing":autoClosing||void 0,ref:rootRef'));
+  assert.ok(minifiedPatched.includes('const { expanded, toggle, setExpanded } = useDisclosure();'));
+  assert.ok(minifiedPatched.includes('if (applied && running) setAutoClamped(true);'));
+  // 可读构建的输出不受新锚点影响。
+  assert.equal(patchSource(fixtureOriginal), fixturePatched);
+});
+test('压缩构建拒绝残缺锚点', () => {
+  const broken = minifiedFixture.replace('onToggle:toggle,', 'onToggle:other,');
+  assert.throws(() => patchSource(broken), /未唯一匹配/);
+  assert.throws(() => patchSource(minifiedFixture + minifiedFixture), /未唯一匹配/);
+});
 test('补丁之外的本地改动原样保留', () => {
   const custom = original + '\n// 其他本地修改\n';
   assert.equal(patchSource(patchSource(custom), true), custom);
 });
 test('接管 0.3.5 的限高补丁并升级到跟随滚动 + 收起动画', () => {
-  const helperStart = patched.indexOf('\t\t' + marker);
-  const helperEnd = patched.indexOf(componentLine, helperStart);
-  const helperText = patched.slice(helperStart, helperEnd);
+  const helperStart = fixturePatched.indexOf('\t\t' + marker);
+  const helperEnd = fixturePatched.indexOf(componentLine, helperStart);
+  const helperText = fixturePatched.slice(helperStart, helperEnd);
   const v035Disclosure =
     '\t\t\tconst { expanded, toggle, setExpanded } = useDisclosure();\n' +
     '\t\t\tconst previousRunning = (0, react.useRef)(false);\n' +
@@ -299,7 +342,7 @@ test('接管 0.3.5 的限高补丁并升级到跟随滚动 + 收起动画', () =
     '\t\t\t\tconst applied = syncReasoningDisclosure(previousRunning, running, setExpanded, readExpandThnkOptions());\n' +
     '\t\t\t\tif (applied) setAutoClamped(running);\n' +
     '\t\t\t}, [running, setExpanded]);\n';
-  const v035 = original
+  const v035 = fixtureOriginal
     .replace(componentLine, helperText + componentLine)
     .replace('\t\t\tconst { expanded, toggle } = useDisclosure();\n', v035Disclosure)
     .replace(
@@ -311,23 +354,23 @@ test('接管 0.3.5 的限高补丁并升级到跟随滚动 + 收起动画', () =
       '\t\t\t\tclassName: ReasoningRow_module_css_default.thinkBody,\n',
       '\t\t\t\tclassName: ReasoningRow_module_css_default.thinkBody + " dsh-et-body",\n',
     );
-  assert.equal(patchSource(v035, true), original);
+  assert.equal(patchSource(v035, true), fixtureOriginal);
   const upgraded = patchSource(v035);
   assert.ok(upgraded.includes('"data-dsh-et-closing": autoClosing || void 0,'));
   assert.ok(upgraded.includes('requestAnimationFrame(follow)'));
   assert.equal(patchSource(upgraded), upgraded);
-  assert.equal(patchSource(upgraded, true), original);
+  assert.equal(patchSource(upgraded, true), fixtureOriginal);
 });
 test('接管 0.3.4 及更早的单段补丁并升级到限高版本', () => {
-  const legacy = legacyPatch(original, patched);
-  assert.equal(patchSource(legacy, true), original);
+  const legacy = legacyPatch(fixtureOriginal, fixturePatched);
+  assert.equal(patchSource(legacy, true), fixtureOriginal);
   const upgraded = patchSource(legacy);
   assert.ok(upgraded.includes('"data-dsh-et-clamped": autoClamped || void 0,'));
   assert.equal(patchSource(upgraded), upgraded);
-  assert.equal(patchSource(upgraded, true), original);
+  assert.equal(patchSource(upgraded, true), fixtureOriginal);
 });
 test('旧补丁段落被其他代码改动时拒绝覆盖', () => {
-  const legacy = legacyPatch(original, patched);
+  const legacy = legacyPatch(fixtureOriginal, fixturePatched);
   const tampered = legacy.replace(
     disclosureTailText,
     '\t\t\t\t// 其他插件追加\n' + disclosureTailText,
@@ -343,19 +386,19 @@ test('未知、重复、残缺锚点拒绝覆盖', () => {
   );
 });
 test('组件使用布局阶段同步，沿用原有手动开合状态', () => {
-  assert.ok(patched.includes('const { expanded, toggle, setExpanded } = useDisclosure();'));
-  assert.ok(patched.includes('if (applied && running) setAutoClamped(true);'));
-  assert.ok(patched.includes('onToggle: toggleUnclamped,'));
+  assert.ok(fixturePatched.includes('const { expanded, toggle, setExpanded } = useDisclosure();'));
+  assert.ok(fixturePatched.includes('if (applied && running) setAutoClamped(true);'));
+  assert.ok(fixturePatched.includes('onToggle: toggleUnclamped,'));
 });
 test('补丁写入限高、滚动跟随与收起动画所需的标记', () => {
-  assert.ok(patched.includes('ReasoningRow_module_css_default.thinkBody + " dsh-et-body"'));
-  assert.ok(patched.includes('"data-dsh-et-clamped": autoClamped || void 0,'));
-  assert.ok(patched.includes('"data-dsh-et-closing": autoClosing || void 0,'));
-  assert.ok(patched.includes('ref: rootRef,'));
-  assert.ok(patched.includes('requestAnimationFrame(follow)'));
-  assert.ok(patched.includes('cancelAnimationFrame(frame)'));
-  assert.ok(patched.includes('--dsh-et-open-height'));
-  assert.ok(patched.includes('options.collapseAnimation !== false'));
+  assert.ok(fixturePatched.includes('ReasoningRow_module_css_default.thinkBody + " dsh-et-body"'));
+  assert.ok(fixturePatched.includes('"data-dsh-et-clamped": autoClamped || void 0,'));
+  assert.ok(fixturePatched.includes('"data-dsh-et-closing": autoClosing || void 0,'));
+  assert.ok(fixturePatched.includes('ref: rootRef,'));
+  assert.ok(fixturePatched.includes('requestAnimationFrame(follow)'));
+  assert.ok(fixturePatched.includes('cancelAnimationFrame(frame)'));
+  assert.ok(fixturePatched.includes('--dsh-et-open-height'));
+  assert.ok(fixturePatched.includes('options.collapseAnimation !== false'));
 });
 test('同步函数报告本次切换是否由自动逻辑执行', () => {
   const previous = { current: false };
@@ -431,6 +474,20 @@ for (const version of supportedVersions) {
         assert.equal(state.read(), original);
       },
       original,
+      version,
+    ),
+  );
+}
+for (const version of ['0.2.2-rc.1', '0.2.2-rc.2']) {
+  test('压缩与可读构建在对应宿主版本上启用与停用：' + version, () =>
+    lifecycle(
+      (state) => {
+        state.mount();
+        assert.equal(state.read(), minifiedPatched);
+        state.unmount();
+        assert.equal(state.read(), minifiedOriginal);
+      },
+      minifiedOriginal,
       version,
     ),
   );
@@ -744,6 +801,37 @@ test('声明的宿主版本与运行时精确白名单一致', () => {
   assert.ok(supportedVersions.includes('0.2.2-rc.1'));
 });
 
+function functionEnd(source, start) {
+  let depth = 0;
+  let quote = null;
+  let opened = false;
+  for (let i = start; i < source.length; i++) {
+    const ch = source[i];
+    if (quote !== null) {
+      if (ch === '\\') {
+        i++;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{') {
+      depth++;
+      opened = true;
+      continue;
+    }
+    if (ch === '}') {
+      depth--;
+      if (opened && depth === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
 test(
   '真实 Chat 产物保留分段 running 与原生 disclosure setter 语义',
   {
@@ -755,11 +843,17 @@ test(
     );
     assert.equal(manifest.name, targetModule);
     assert.ok(supportedVersions.includes(manifest.version));
-    assert.ok(original.includes('running: streaming && i === last,'));
-    assert.ok(original.includes('const { expanded, toggle } = useDisclosure();'));
+    const layout = layoutOf(original);
+    const runningText =
+      layout === 'minified' ? 'running:streaming&&i===last' : 'running: streaming && i === last,';
+    assert.ok(original.includes(runningText));
+    const declaration =
+      layout === 'minified'
+        ? 'function useDisclosure('
+        : '\t\tfunction useDisclosure(version = 0) {';
     // 执行官方 useDisclosure，控制其 state/callback 边界；不挂载 React 或 DOM。
-    const begin = original.indexOf('\t\tfunction useDisclosure(version = 0) {');
-    const end = original.indexOf('\n\t\t}', begin) + '\n\t\t}'.length;
+    const begin = original.indexOf(declaration);
+    const end = functionEnd(original, begin);
     assert.ok(begin >= 0 && end > begin);
     let state = null;
     const react = {
@@ -771,7 +865,7 @@ test(
       ],
       useCallback: (callback) => callback,
     };
-    const useDisclosure = vm.runInNewContext('(' + original.slice(begin, end).trim() + ')', {
+    const useDisclosure = vm.runInNewContext('(' + original.slice(begin, end) + ')', {
       react,
     });
     const previous = { current: false };
@@ -790,4 +884,27 @@ test(
     new vm.Script(patched);
     assert.equal(patchSource(patched, true), original);
   },
+);
+
+test(
+  '真实 Chat 产物上的 Host 生命周期',
+  {
+    skip: process.argv[2] ? false : '传入真实 Chat client.js 后执行',
+  },
+  () =>
+    lifecycle(
+      (state) => {
+        state.mount();
+        assert.equal(state.read(), patched);
+        assert.equal(state.revisions, 1);
+        state.graph();
+        assert.equal(state.revisions, 1);
+        assert.equal(state.read(), patched);
+        state.unmount();
+        assert.equal(state.read(), original);
+        assert.equal(state.listeners.size, 0);
+      },
+      original,
+      artifactVersion,
+    ),
 );

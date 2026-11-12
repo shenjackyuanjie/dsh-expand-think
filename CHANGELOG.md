@@ -1,5 +1,14 @@
 # 版本记录
 
+## 0.3.8 — 2026-11-12
+
+- 支持 DSH 与 `@deepseek-ai/dsh-client-ui-chat@0.2.2-rc.2`，运行时精确白名单与 `engines.dsh` 同步扩展，保留已支持的五个版本。
+- 适配 rc.2 的压缩客户端产物：新增压缩构建的组件、开合状态、手动开合、正文容器与预览标记锚点，注入逻辑与可读构建共用；撤销按构建形态回填原文，补丁保持幂等与逐字节还原。
+- 修复 helper 定位方式：压缩产物正文为单行，改按 helper 固定前缀定位，避免按换行切分时误删正文。
+- 核对 rc.2 的 Client Modules、Host/Client Settings、ConfigForms、插件配置插槽与 Locale 接口，未发现需要分支处理的差异。
+- 新增 `scripts/verify-client-api.mjs`，对解包的官方产物核对 Host 与 Client 接口；新增真实产物上的 Host 生命周期回归。
+- 共 62 项回归：默认离线 60 项通过、2 项真实产物专用测试跳过；rc.1 与 rc.2 真实产物各 62/62 通过，四个旧版本真实产物同样 62/62 通过。验证详情见 [rc.2 验证记录](./docs/rc2-validation.md)。
+
 ## 0.3.7 — 2026-11-08
 
 - 支持 DSH 与 `@deepseek-ai/dsh-client-ui-chat@0.2.2-rc.1`，运行时精确白名单与 `engines.dsh` 同步扩展，保留已支持的四个 `0.2.1` rc 版本。

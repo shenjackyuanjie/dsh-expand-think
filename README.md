@@ -10,24 +10,24 @@ DeepSeek Harness（DSH）插件，包名 `@shenjackyuanjie/dsh-expand-think`，�
 
 ### 安装本地 tgz
 
-在 DSH 插件管理器中选择 `shenjackyuanjie-dsh-expand-think-0.3.7.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。命令行在安装了 DSH 的目录执行，`web` 替换为实际 profile：
+在 DSH 插件管理器中选择 `shenjackyuanjie-dsh-expand-think-0.3.8.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。命令行在安装了 DSH 的目录执行，`web` 替换为实际 profile：
 
 ```powershell
-pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.3.7.tgz"
+pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.3.8.tgz"
 ```
 
 插件启用或停用时需要应用／撤销一次前端补丁，可能触发一次 Chat 更新；保存开关不触发该流程。
 
 ### 从 GitHub Packages 安装
 
-`0.3.7` 在新增 DSH `0.2.2-rc.1` 支持的同时，继续兼容 `0.2.1-rc.2`／`rc.3`／`rc.4`／`rc.5`；五个版本的真实官方 Chat 产物均完成回归。
+`0.3.8` 新增 DSH `0.2.2-rc.2` 支持，继续兼容 `0.2.2-rc.1` 与 `0.2.1-rc.2`／`rc.3`／`rc.4`／`rc.5`；六个版本的真实官方 Chat 产物均完成回归。
 
 包已发布到 GitHub Packages：`@shenjackyuanjie/dsh-expand-think`。GitHub 的 npm registry 读取公开包也需要认证，使用具备 `read:packages` 的 classic PAT 在本机登录（不要提交 token）；Username 填 GitHub 用户名，Password 填 PAT：
 
 ```powershell
 npm config set '@shenjackyuanjie:registry' 'https://npm.pkg.github.com' --location=user
 npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg.github.com
-pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.7
+pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.8
 ```
 
 **停用或卸载：** 在插件管理器中停用或卸载 `dsh-expand-think`，正常停用会撤销思考区块补丁并通知前端更新。启用期间不要另外运行手工脚本修改 Chat 产物，以免两个管理入口互相覆盖。
@@ -75,9 +75,9 @@ pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.3.7
 
 ## 兼容范围与实现方式
 
-支持 **DSH `0.2.1-rc.2`／`0.2.1-rc.3`／`0.2.1-rc.4`／`0.2.1-rc.5`／`0.2.2-rc.1`**，以及对应的 **`@deepseek-ai/dsh-client-ui-chat`** 同版本；五个版本的 `ReasoningRow` 锚点一致，共用同一份补丁。`0.2.1-rc.5` 在创建开合状态后插入了 thinking 正文归一化，因此补丁锚点只取那行创建语句，再额外锚定手动开合回调与展开正文容器两处。更早的宿主版本不再适配，版本不符时停止激活。
+支持 **DSH `0.2.1-rc.2`／`0.2.1-rc.3`／`0.2.1-rc.4`／`0.2.1-rc.5`／`0.2.2-rc.1`／`0.2.2-rc.2`**，以及对应的 **`@deepseek-ai/dsh-client-ui-chat`** 同版本。`0.2.1-rc.2` 至 `0.2.2-rc.1` 是带缩进的可读构建，共用同一组锚点；`0.2.2-rc.2` 起客户端产物改为压缩构建，锚点单独维护，注入的辅助函数与开合逻辑两种构建共用。更早的宿主版本不再适配，版本不符时停止激活。
 
-已从公开 npm registry 下载并核对 `0.2.2-rc.1` 的 Chat、Client Modules、Settings 和 Plugin Manager 产物：`running` 仍为当前流式尾区块，原生 `useDisclosure` 仍提供布尔 `setExpanded`；Host 的 `clientPath`／`rebuilt`／`onGraphChanged`，Client 的 `configForms.get`／`getSnapshot`／`mutate` 与 `plugins.bundle.config` 插槽仍兼容，无需新增版本分支或改写运行策略。验证步骤与产物校验值见 [rc.1 验证记录](./docs/rc1-validation.md)。
+已从公开 npm registry 下载并核对 `0.2.2-rc.1` 与 `0.2.2-rc.2` 的 Chat、Client Modules、Settings 和 Plugin Manager 产物：`running` 仍为当前流式尾区块，原生 `useDisclosure` 仍提供布尔 `setExpanded`；Host 的 `clientPath`／`rebuilt`／`onGraphChanged`，Client 的 `configForms.get`／`getSnapshot`／`mutate` 与 `plugins.bundle.config` 插槽两版一致，无需改写运行策略。验证步骤、产物校验值与压缩构建锚点见 [rc.1 验证记录](./docs/rc1-validation.md) 与 [rc.2 验证记录](./docs/rc2-validation.md)。
 
 DSH 的 reasoning Body Slot 仅在正文已经展开后挂载，无法控制外层开合，因此采用 Host 插件管理的**磁盘级前端补丁**，不是 DOM 点击模拟：从 `clientModules.clientPath()` 取实际前端产物，校验包版本和唯一代码锚点，原子替换后调用 `clientModules.rebuilt()`，由 DSH 原生 HMR 发布前端新版本。
 
@@ -104,11 +104,12 @@ pnpm run pack
 
 ```powershell
 node test.mjs "D:\实际路径\dsh-client-ui-chat\lib\client.js"
+node scripts/verify-client-api.mjs "D:\解包产物根目录"
 ```
 
 源码分工：[index.js](./index.js) 负责 Host 生命周期、版本验证、原子写入、HMR 与停用还原，[patch-core.js](./patch-core.js) 负责纯文本补丁、thinking 状态边沿同步、限高/滚动/动画锚点与历史补丁接管，[settings.js](./settings.js) 声明五个原生 volatile Config 字段，[client.js](./client.js) 渲染详情页的开关、行数输入、限高与动画 CSS、保存提示。
 
-56 项回归（默认离线运行通过 55 项，真实产物专用 1 项跳过；传入真实产物后全部执行）覆盖自动开合、四种开关组合、手动选择保留、多区块隔离、历史默认折叠、插件启停、五个受支持宿主版本、限高标记与手动展开清除、行数校验、跟随滚动与收起动画标记、0.3.4／0.3.5 历史补丁的接管与升级、设置保存与版本冲突、保存不产生额外 HMR、只读配置桥接及清理、不注册额外配置 Tool、包名与插槽标识一致、HMR 回调重入、延后挂载、版本拒绝，以及不覆盖其他修改；测试不登录、不调用模型、不挂载 React 或 DOM，生命周期仅修改隔离临时目录；真实产物测试以最小 state/callback 替身执行官方 `useDisclosure`，校验 setter、手动开合与外层版本重置语义。0.2.1 移除保存时重载 Chat 的路径后，两个开关已经使用者重启截图确认；0.3.0 改用新包名后需要重新在页面上复核；0.3.5 起的限高、跟随滚动与收起动画需要实际页面确认。长时间输入框稳定性与浅色主题仍未完成实际页面复核，离线测试不能替代这部分验证。
+62 项回归（默认离线运行通过 60 项，真实产物专用 2 项跳过；传入真实产物后全部执行）覆盖自动开合、四种开关组合、手动选择保留、多区块隔离、历史默认折叠、插件启停、五个受支持宿主版本、限高标记与手动展开清除、行数校验、跟随滚动与收起动画标记、0.3.4／0.3.5 历史补丁的接管与升级、设置保存与版本冲突、保存不产生额外 HMR、只读配置桥接及清理、不注册额外配置 Tool、包名与插槽标识一致、HMR 回调重入、延后挂载、版本拒绝，以及不覆盖其他修改；测试不登录、不调用模型、不挂载 React 或 DOM，生命周期仅修改隔离临时目录；真实产物测试以最小 state/callback 替身执行官方 `useDisclosure`，校验 setter、手动开合与外层版本重置语义。0.2.1 移除保存时重载 Chat 的路径后，两个开关已经使用者重启截图确认；0.3.0 改用新包名后需要重新在页面上复核；0.3.5 起的限高、跟随滚动与收起动画需要实际页面确认。长时间输入框稳定性与浅色主题仍未完成实际页面复核，离线测试不能替代这部分验证。
 
 ## 发布
 

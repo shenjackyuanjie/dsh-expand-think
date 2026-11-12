@@ -1,5 +1,6 @@
 // 纯文本变换；仅调整 ReasoningRow，不导入 React，也不执行前端代码。
-// 已核对官方 npm 产物：0.2.1-rc.2 至 rc.5 与 0.2.2-rc.1 共用同一份补丁。
+// 0.2.1-rc.2 至 0.2.2-rc.1 为带缩进的可读构建，共用同一组锚点。
+// 0.2.2-rc.2 起客户端产物改为压缩构建，锚点单独维护，注入逻辑共用。
 // 正文归一化在创建开合状态之后，锚点仅取创建语句，不依赖 text 的声明位置。
 export const supportedVersions = [
   '0.2.1-rc.2',
@@ -7,6 +8,7 @@ export const supportedVersions = [
   '0.2.1-rc.4',
   '0.2.1-rc.5',
   '0.2.2-rc.1',
+  '0.2.2-rc.2',
 ];
 export const supportedVersion = supportedVersions[supportedVersions.length - 1];
 export const targetModule = '@deepseek-ai/dsh-client-ui-chat';
@@ -77,6 +79,7 @@ export function syncReasoningDisclosure(
 }
 
 const component = '\t\tconst ReasoningRow = (0, react.memo)(function ReasoningRow(';
+const minifiedComponent = 'const ReasoningRow=(0,react.memo)(function ReasoningRow(';
 const indented = (text) =>
   text
     .split('\n')
@@ -90,7 +93,14 @@ const helper =
   indented(syncReasoningDisclosure.toString());
 
 const disclosureOriginal = '\t\t\tconst { expanded, toggle } = useDisclosure();\n';
+const minifiedDisclosureOriginal = 'const{expanded,toggle}=useDisclosure();';
 const disclosureHead = '\t\t\tconst { expanded, toggle, setExpanded } = useDisclosure();\n';
+
+/** 两代客户端构建形态；补丁主体共用，只有原始锚点不同。 */
+const layouts = {
+  readable: { component, disclosure: disclosureOriginal },
+  minified: { component: minifiedComponent, disclosure: minifiedDisclosureOriginal },
+};
 
 /** 0.3.4 及更早：只有自动开合。 */
 const legacyDisclosure =
@@ -211,34 +221,62 @@ const edits = [
   },
 ];
 
+/** 压缩构建的同一组改动；只差空白与分号，语义与可读构建一致。 */
+const minifiedEdits = [
+  {
+    name: '手动开合不受限高影响',
+    original: 'expandOnRowClick:true,onToggle:toggle,collapsedContent',
+    patched: 'expandOnRowClick:true,onToggle:toggleUnclamped,collapsedContent',
+  },
+  {
+    name: '展开正文容器标记',
+    original: 'className:ReasoningRow_module_css_default.thinkBody',
+    patched: 'className:ReasoningRow_module_css_default.thinkBody+" dsh-et-body"',
+  },
+  {
+    name: '自动展开限高标记',
+    original: '"data-preview":preview||void 0',
+    patched: '"data-preview":preview||void 0,"data-dsh-et-clamped":autoClamped||void 0',
+  },
+  {
+    name: '收起动画标记与根引用',
+    chained: true,
+    original: '"data-dsh-et-clamped":autoClamped||void 0',
+    patched:
+      '"data-dsh-et-clamped":autoClamped||void 0,' +
+      '"data-dsh-et-closing":autoClosing||void 0,ref:rootRef',
+  },
+];
+
 function requireOnce(source, text, description) {
   if (source.split(text).length !== 2) {
     throw new Error(description + ' 未唯一匹配；未覆盖目标或其他本地修改。');
   }
 }
 
-function stripHelper(source) {
-  const markerAt = source.indexOf(marker);
-  const lineStart = source.lastIndexOf('\n', markerAt) + 1;
-  const componentAt = source.indexOf(component, markerAt);
-  if (componentAt < 0) throw new Error('本地状态读取与同步函数 后缺少 ReasoningRow 组件；未覆盖。');
-  const segment = source.slice(lineStart, componentAt);
+function stripHelper(source, layout) {
+  const helperStart = source.indexOf('\t\t' + marker);
+  const componentAt = source.indexOf(layout.component, helperStart);
+  if (helperStart < 0 || componentAt < 0) {
+    throw new Error('本地状态读取与同步函数 后缺少 ReasoningRow 组件；未覆盖。');
+  }
+  const segment = source.slice(helperStart, componentAt);
   if (
     !segment.includes('function readExpandThnkOptions(') ||
     !segment.includes('function syncReasoningDisclosure(')
   ) {
     throw new Error('本地状态读取与同步函数 结构已被修改；未覆盖。');
   }
-  return source.slice(0, lineStart) + source.slice(componentAt);
+  return source.slice(0, helperStart) + source.slice(componentAt);
 }
 
 // 只接受已知的历史形态，被其他代码改过的段落一律拒绝覆盖。
-function restoreDisclosure(source) {
+function restoreDisclosure(source, target) {
   const head = source.indexOf(disclosureHead);
   if (head < 0) throw new Error('ReasoningRow 开合逻辑 缺少起始标记；未覆盖。');
-  for (const layout of disclosureLayouts) {
-    if (source.startsWith(layout, head)) {
-      return source.slice(0, head) + disclosureOriginal + source.slice(head + layout.length);
+  for (const body of disclosureLayouts) {
+    if (source.startsWith(body, head)) {
+      return source.slice(0, head) + target.disclosure + source.slice(head + body.length);
     }
   }
   throw new Error('ReasoningRow 开合逻辑 已被修改；未覆盖。');
@@ -246,7 +284,7 @@ function restoreDisclosure(source) {
 
 function restoreEdits(source) {
   let clean = source;
-  for (const edit of [...edits].reverse()) {
+  for (const edit of [...edits, ...minifiedEdits].reverse()) {
     if (!clean.includes(edit.patched)) continue;
     requireOnce(clean, edit.patched, edit.name);
     clean = clean.replace(edit.patched, edit.original);
@@ -254,19 +292,31 @@ function restoreEdits(source) {
   return clean;
 }
 
+/** 识别目标产物的构建形态；两种形态的组件锚点各自唯一。 */
+export function layoutOf(source) {
+  const matched = Object.keys(layouts).filter((id) => source.includes(layouts[id].component));
+  if (matched.length !== 1) {
+    throw new Error('ReasoningRow 组件 未唯一匹配；未覆盖目标或其他本地修改。');
+  }
+  return matched[0];
+}
+
 export function patchSource(source, revert = false) {
+  const layoutId = layoutOf(source);
+  const layout = layouts[layoutId];
+  const active = layoutId === 'minified' ? minifiedEdits : edits;
   let clean = source;
   if (clean.includes(marker)) {
-    clean = restoreEdits(restoreDisclosure(stripHelper(clean)));
+    clean = restoreEdits(restoreDisclosure(stripHelper(clean, layout), layout));
   }
-  requireOnce(clean, component, 'ReasoningRow 组件');
-  requireOnce(clean, disclosureOriginal, 'ReasoningRow 开合逻辑');
-  for (const edit of edits) {
+  requireOnce(clean, layout.component, 'ReasoningRow 组件');
+  requireOnce(clean, layout.disclosure, 'ReasoningRow 开合逻辑');
+  for (const edit of active) {
     if (!edit.chained) requireOnce(clean, edit.original, edit.name);
   }
   if (revert) return clean;
-  let patched = clean.replace(component, helper + component);
-  patched = patched.replace(disclosureOriginal, currentDisclosure);
-  for (const edit of edits) patched = patched.replace(edit.original, edit.patched);
+  let patched = clean.replace(layout.component, helper + layout.component);
+  patched = patched.replace(layout.disclosure, currentDisclosure);
+  for (const edit of active) patched = patched.replace(edit.original, edit.patched);
   return patched;
 }

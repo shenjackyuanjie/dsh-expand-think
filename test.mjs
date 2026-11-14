@@ -478,7 +478,7 @@ for (const version of supportedVersions) {
     ),
   );
 }
-for (const version of ['0.2.2-rc.1', '0.2.2-rc.2']) {
+for (const version of ['0.2.2-rc.1', '0.2.2-rc.2', '0.2.2-rc.3']) {
   test('压缩与可读构建在对应宿主版本上启用与停用：' + version, () =>
     lifecycle(
       (state) => {

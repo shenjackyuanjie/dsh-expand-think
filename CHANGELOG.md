@@ -1,5 +1,12 @@
 # 版本记录
 
+## 0.3.9 — 2026-11-14
+
+- 支持 DSH 与 `@deepseek-ai/dsh-client-ui-chat@0.2.2-rc.3`，运行时精确白名单与 `engines.dsh` 同步扩展，保留已支持的六个版本。
+- rc.3 的 Chat 产物与 rc.2 逐字节相同（`lib/client.js` SHA-256 `eef53e82…`），压缩构建锚点、注入逻辑与撤销逻辑直接复用，不新增版本分支。
+- 核对 rc.3 的 Client Modules、Host/Client Settings、ConfigForms、插件配置插槽与 Locale 接口，未发现需要分支处理的差异。
+- 共 64 项回归：默认离线 62 项通过、2 项真实产物专用测试跳过；rc.3 真实产物 64/64 通过。验证详情见 [rc.3 验证记录](./docs/rc3-validation.md)。
+
 ## 0.3.8 — 2026-11-12
 
 - 支持 DSH 与 `@deepseek-ai/dsh-client-ui-chat@0.2.2-rc.2`，运行时精确白名单与 `engines.dsh` 同步扩展，保留已支持的五个版本。

@@ -1,6 +1,6 @@
 // 纯文本变换；仅调整 ReasoningRow，不导入 React，也不执行前端代码。
 // 0.2.1-rc.2 至 0.2.2-rc.1 为带缩进的可读构建，共用同一组锚点。
-// 0.2.2-rc.2 起客户端产物改为压缩构建，锚点单独维护，注入逻辑共用。
+// 0.2.2-rc.2 起客户端产物改为压缩构建，锚点单独维护，注入逻辑共用；rc.3 的产物与 rc.2 逐字节相同。
 // 正文归一化在创建开合状态之后，锚点仅取创建语句，不依赖 text 的声明位置。
 export const supportedVersions = [
   '0.2.1-rc.2',
@@ -9,6 +9,7 @@ export const supportedVersions = [
   '0.2.1-rc.5',
   '0.2.2-rc.1',
   '0.2.2-rc.2',
+  '0.2.2-rc.3',
 ];
 export const supportedVersion = supportedVersions[supportedVersions.length - 1];
 export const targetModule = '@deepseek-ai/dsh-client-ui-chat';

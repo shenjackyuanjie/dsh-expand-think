@@ -478,7 +478,7 @@ for (const version of supportedVersions) {
     ),
   );
 }
-for (const version of ['0.2.2-rc.1', '0.2.2-rc.2', '0.2.2-rc.3']) {
+for (const version of ['0.2.2-rc.1', '0.2.2-rc.2', '0.2.2-rc.3', '0.2.2-rc.4', '0.2.2-rc.5']) {
   test('压缩与可读构建在对应宿主版本上启用与停用：' + version, () =>
     lifecycle(
       (state) => {
@@ -798,7 +798,9 @@ test('状态桥接读取失败不影响原生 Chat，旧实例清理不删除新
 test('声明的宿主版本与运行时精确白名单一致', () => {
   const manifest = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.engines.dsh.split(' || '), supportedVersions);
-  assert.ok(supportedVersions.includes('0.2.2-rc.1'));
+  for (const version of ['0.2.2-rc.1', '0.2.2-rc.4', '0.2.2-rc.5']) {
+    assert.ok(supportedVersions.includes(version));
+  }
 });
 
 function functionEnd(source, start) {

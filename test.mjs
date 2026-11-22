@@ -454,16 +454,29 @@ test('目标稍后加入 graph 时自动应用，不使用轮询', () =>
     state.unmount();
     assert.equal(state.listeners.size, 0);
   }));
-test('不支持的版本激活失败，保留原文件并清理订阅', () =>
-  lifecycle(
-    (state) => {
-      assert.throws(() => state.mount(), /仅支持/);
-      assert.equal(state.read(), original);
-      assert.equal(state.listeners.size, 0);
-    },
-    original,
-    '0.2.2',
-  ));
+for (const version of [
+  '0.2.1-rc.2',
+  '0.2.1-rc.3',
+  '0.2.1-rc.4',
+  '0.2.1-rc.5',
+  '0.2.1',
+  '0.2.2',
+  '0.2.2-rc.6',
+  '0.2.3-alpha.3',
+  '0.2.3',
+]) {
+  test('不支持的版本激活失败，保留原文件并清理订阅：' + version, () =>
+    lifecycle(
+      (state) => {
+        assert.throws(() => state.mount(), /仅支持/);
+        assert.equal(state.read(), original);
+        assert.equal(state.listeners.size, 0);
+      },
+      original,
+      version,
+    ),
+  );
+}
 for (const version of supportedVersions) {
   test('支持的宿主版本可直接应用与还原：' + version, () =>
     lifecycle(
@@ -478,7 +491,15 @@ for (const version of supportedVersions) {
     ),
   );
 }
-for (const version of ['0.2.2-rc.1', '0.2.2-rc.2', '0.2.2-rc.3', '0.2.2-rc.4', '0.2.2-rc.5']) {
+for (const version of [
+  '0.2.2-rc.1',
+  '0.2.2-rc.2',
+  '0.2.2-rc.3',
+  '0.2.2-rc.4',
+  '0.2.2-rc.5',
+  '0.2.3-alpha.1',
+  '0.2.3-alpha.2',
+]) {
   test('压缩与可读构建在对应宿主版本上启用与停用：' + version, () =>
     lifecycle(
       (state) => {
@@ -798,9 +819,15 @@ test('状态桥接读取失败不影响原生 Chat，旧实例清理不删除新
 test('声明的宿主版本与运行时精确白名单一致', () => {
   const manifest = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
   assert.deepEqual(manifest.engines.dsh.split(' || '), supportedVersions);
-  for (const version of ['0.2.2-rc.1', '0.2.2-rc.4', '0.2.2-rc.5']) {
-    assert.ok(supportedVersions.includes(version));
-  }
+  assert.deepEqual(supportedVersions, [
+    '0.2.2-rc.1',
+    '0.2.2-rc.2',
+    '0.2.2-rc.3',
+    '0.2.2-rc.4',
+    '0.2.2-rc.5',
+    '0.2.3-alpha.1',
+    '0.2.3-alpha.2',
+  ]);
 });
 
 function functionEnd(source, start) {

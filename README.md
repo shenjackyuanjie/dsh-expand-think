@@ -27,17 +27,23 @@ DeepSeek Harness（DSH）插件，包名 `@shenjackyuanjie/dsh-expand-think`，�
 
 ## 安装与使用
 
-### 安装本地 tgz
+以下四种方式任选其一。
 
-以下使用 `0.4.0` 归档。官方 `0.2.3-alpha.1` npm 宿主在加载插件前存在启动问题，详见 [验证限制](./docs/alpha1-validation.md#验证限制)。
+### 从 GitHub 源码安装
 
-在 DSH 插件管理器中选择 `shenjackyuanjie-dsh-expand-think-0.4.0.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。命令行在安装了 DSH 的目录执行，`web` 替换为实际 profile：
+纯 JavaScript、无构建步骤，可以直接从仓库安装（需要能访问 GitHub）：
 
 ```powershell
-pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.4.0.tgz"
+pnpm dsh plugin --profile web add github:shenjackyuanjie/dsh-expand-think#v0.4.0
 ```
 
-插件启用或停用时需要应用／撤销一次前端补丁，可能触发一次 Chat 更新；保存开关不触发该流程。
+### 从 GitHub Release 附件安装
+
+`v0.4.0` 的 release 附带与本地 tgz 相同的归档，不需要 registry 认证：
+
+```powershell
+pnpm dsh plugin --profile web add "https://github.com/shenjackyuanjie/dsh-expand-think/releases/download/v0.4.0/shenjackyuanjie-dsh-expand-think-0.4.0.tgz"
+```
 
 ### 从 GitHub Packages 安装
 
@@ -51,21 +57,17 @@ npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg
 pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.4.0
 ```
 
-### 从 GitHub Release 附件安装
+### 安装本地 tgz
 
-`v0.4.0` 的 release 附带与本地 tgz 相同的归档，不需要 registry 认证：
+本节使用 `0.4.0` 归档。官方 `0.2.3-alpha.1` npm 宿主在加载插件前存在启动问题，详见 [验证限制](./docs/alpha1-validation.md#验证限制)。
 
-```powershell
-pnpm dsh plugin --profile web add "https://github.com/shenjackyuanjie/dsh-expand-think/releases/download/v0.4.0/shenjackyuanjie-dsh-expand-think-0.4.0.tgz"
-```
-
-### 从 GitHub 源码安装
-
-纯 JavaScript、无构建步骤，也可以直接从仓库安装（需要能访问 GitHub）：
+在 DSH 插件管理器中选择 `shenjackyuanjie-dsh-expand-think-0.4.0.tgz` 安装，然后启用 **dsh-expand-think · 思考自动展开**。命令行在安装了 DSH 的目录执行，`web` 替换为实际 profile：
 
 ```powershell
-pnpm dsh plugin --profile web add github:shenjackyuanjie/dsh-expand-think#v0.4.0
+pnpm dsh plugin --profile web add "D:\路径\shenjackyuanjie-dsh-expand-think-0.4.0.tgz"
 ```
+
+插件启用或停用时需要应用／撤销一次前端补丁，可能触发一次 Chat 更新；保存开关不触发该流程。
 
 **停用或卸载：** 在插件管理器中停用或卸载 `dsh-expand-think`，正常停用会撤销思考区块补丁并通知前端更新。启用期间不要另外运行手工脚本修改 Chat 产物，以免两个管理入口互相覆盖。
 

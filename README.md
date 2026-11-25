@@ -6,6 +6,25 @@
 
 DeepSeek Harness（DSH）插件，包名 `@shenjackyuanjie/dsh-expand-think`，行 id `dsh-expand-think`。安装后在 DSH 插件管理器中管理启用和停用，不需要手动运行补丁脚本。
 
+## 效果与展示
+
+### 效果
+
+- 每段 thinking 开始流式输出时自动展开正文；转为回答、工具调用，或流式状态因停止／失败结束时自动收起。
+- 不等待整轮任务结束，按单个 thinking 区块的 `running` 状态切换。
+- 输出中手动收起后，后续 token 不会反复把它展开；结束后仍可手动展开查看原文。
+- 自动展开时可以限制正文高度（默认 9 行，可调 3–60 行），超出部分在正文内滚动，输出期间自动跟随到底部。
+- 结束时可以播放 240ms 线性收起动画；手动点开的始终完整展开。
+- 历史 thinking 初次显示仍默认折叠。
+- 不改变回答内容、工具调用、模型请求或会话记录，也不调用额外模型。
+- 外层的“工作步骤展示”和过程分组仍遵循 DSH 原有设置，本插件只管理 thinking 自身的开合。
+
+### 截图
+
+![thinking 自动展开与自动收起示意图](./docs/thinking-auto-expand.png)
+
+> 上图为界面示意图，非真实运行截图，效果以实际插件行为为准。
+
 ## 安装与使用
 
 ### 安装本地 tgz
@@ -32,24 +51,38 @@ npm login --scope=@shenjackyuanjie --auth-type=legacy --registry=https://npm.pkg
 pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.4.0
 ```
 
+### 从 GitHub Release 附件安装
+
+`v0.4.0` 的 release 附带与本地 tgz 相同的归档，不需要 registry 认证：
+
+```powershell
+pnpm dsh plugin --profile web add "https://github.com/shenjackyuanjie/dsh-expand-think/releases/download/v0.4.0/shenjackyuanjie-dsh-expand-think-0.4.0.tgz"
+```
+
+### 从 GitHub 源码安装
+
+纯 JavaScript、无构建步骤，也可以直接从仓库安装（需要能访问 GitHub）：
+
+```powershell
+pnpm dsh plugin --profile web add github:shenjackyuanjie/dsh-expand-think#v0.4.0
+```
+
 **停用或卸载：** 在插件管理器中停用或卸载 `dsh-expand-think`，正常停用会撤销思考区块补丁并通知前端更新。启用期间不要另外运行手工脚本修改 Chat 产物，以免两个管理入口互相覆盖。
 
-## 效果
+## 兼容范围与实现方式
 
-- 每段 thinking 开始流式输出时自动展开正文；转为回答、工具调用，或流式状态因停止／失败结束时自动收起。
-- 不等待整轮任务结束，按单个 thinking 区块的 `running` 状态切换。
-- 输出中手动收起后，后续 token 不会反复把它展开；结束后仍可手动展开查看原文。
-- 自动展开时可以限制正文高度（默认 9 行，可调 3–60 行），超出部分在正文内滚动，输出期间自动跟随到底部。
-- 结束时可以播放 240ms 线性收起动画；手动点开的始终完整展开。
-- 历史 thinking 初次显示仍默认折叠。
-- 不改变回答内容、工具调用、模型请求或会话记录，也不调用额外模型。
-- 外层的“工作步骤展示”和过程分组仍遵循 DSH 原有设置，本插件只管理 thinking 自身的开合。
+支持 **DSH `0.2.2-rc.1`／`0.2.2-rc.2`／`0.2.2-rc.3`／`0.2.2-rc.4`／`0.2.2-rc.5`／`0.2.3-alpha.1`／`0.2.3-alpha.2`**，以及对应的 **`@deepseek-ai/dsh-client-ui-chat`** 同版本。`0.2.2-rc.1` 是带缩进的可读构建，保留其原有锚点；`0.2.2-rc.2` 起客户端产物改为压缩构建，锚点单独维护，注入的辅助函数与开合逻辑两种构建共用；`0.2.2-rc.3` 至 `rc.5` 的 Chat 产物与 `0.2.2-rc.2` 逐字节相同，沿用同一份压缩构建锚点。`0.2.3-alpha.1` 与 `alpha.2` 的 Chat 构建彼此相同，保留原有压缩锚点与开合语义。宿主或 Chat 不在精确白名单时停止激活。
 
-## 展示
+已从公开 npm registry 下载并核对 `0.2.2-rc.1` 至 `rc.5` 的 Chat、Client Modules、Settings 和 Plugin Manager 产物：`running` 仍为当前流式尾区块，原生 `useDisclosure` 仍提供布尔 `setExpanded`；Host 的 `clientPath`／`rebuilt`／`onGraphChanged`，Client 的 `configForms.get`／`getSnapshot`／`mutate` 与 `plugins.bundle.config` 插槽在这些版本保持一致，无需改写运行策略。验证步骤、产物校验值与压缩构建锚点见 [rc.1 验证记录](./docs/rc1-validation.md)、[rc.2 验证记录](./docs/rc2-validation.md)、[rc.3 验证记录](./docs/rc3-validation.md)、[rc.4／rc.5 验证记录](./docs/rc4-rc5-validation.md) 与 [两版 Alpha 验证记录](./docs/alpha1-validation.md)。
 
-![thinking 自动展开与自动收起示意图](./docs/thinking-auto-expand.png)
+DSH 的 reasoning Body Slot 仅在正文已经展开后挂载，无法控制外层开合，因此采用 Host 插件管理的**磁盘级前端补丁**，不是 DOM 点击模拟：从 `clientModules.clientPath()` 取实际前端产物，校验包版本和唯一代码锚点，原子替换后调用 `clientModules.rebuilt()`，由 DSH 原生 HMR 发布前端新版本。
 
-> 上图为界面示意图，非真实运行截图，效果以实际插件行为为准。
+- **启用／启动：** 应用补丁。
+- **停用／卸载／正常退出：** 只反向移除本补丁，保留其他位置的用户修改。
+- **其他代码已经修改了补丁内部：** 保留文件并记录诊断，不用旧备份覆盖新代码。
+- **进程被强制终止：** 磁盘补丁可能保留；再次启用时会识别并接管。
+
+风险提示：同一台机器上其他 profile 或进程若共用同一份 Chat 前端产物，也可能受到影响，建议只由一个 DSH 实例管理该产物；安装目录需要可写；后续 DSH 版本应重新核对扩展接口和代码锚点。
 
 ## 设置
 
@@ -74,21 +107,6 @@ pnpm dsh plugin --profile web add @shenjackyuanjie/dsh-expand-think@0.4.0
 高度只作用于**自动展开**的那一次：手动点击标题或折叠行展开时，插件会清除限高标记，正文完整显示。输出期间新内容到达时，限高正文自动跟随到底部；读者主动上滚离开底部后不再强行拉回，重新滚到底部即恢复跟随。自动展开后读者手动收起，状态与限高标记一起复位。
 
 收起动画只在收起时播放：正文按当前可见高度线性收拢到 0 并淡出，动画结束后才真正卸载内容，因此不会出现高度跳变。关掉该开关后立即收起。
-
-## 兼容范围与实现方式
-
-支持 **DSH `0.2.2-rc.1`／`0.2.2-rc.2`／`0.2.2-rc.3`／`0.2.2-rc.4`／`0.2.2-rc.5`／`0.2.3-alpha.1`／`0.2.3-alpha.2`**，以及对应的 **`@deepseek-ai/dsh-client-ui-chat`** 同版本。`0.2.2-rc.1` 是带缩进的可读构建，保留其原有锚点；`0.2.2-rc.2` 起客户端产物改为压缩构建，锚点单独维护，注入的辅助函数与开合逻辑两种构建共用；`0.2.2-rc.3` 至 `rc.5` 的 Chat 产物与 `0.2.2-rc.2` 逐字节相同，沿用同一份压缩构建锚点。`0.2.3-alpha.1` 与 `alpha.2` 的 Chat 构建彼此相同，保留原有压缩锚点与开合语义。宿主或 Chat 不在精确白名单时停止激活。
-
-已从公开 npm registry 下载并核对 `0.2.2-rc.1` 至 `rc.5` 的 Chat、Client Modules、Settings 和 Plugin Manager 产物：`running` 仍为当前流式尾区块，原生 `useDisclosure` 仍提供布尔 `setExpanded`；Host 的 `clientPath`／`rebuilt`／`onGraphChanged`，Client 的 `configForms.get`／`getSnapshot`／`mutate` 与 `plugins.bundle.config` 插槽在这些版本保持一致，无需改写运行策略。验证步骤、产物校验值与压缩构建锚点见 [rc.1 验证记录](./docs/rc1-validation.md)、[rc.2 验证记录](./docs/rc2-validation.md)、[rc.3 验证记录](./docs/rc3-validation.md)、[rc.4／rc.5 验证记录](./docs/rc4-rc5-validation.md) 与 [两版 Alpha 验证记录](./docs/alpha1-validation.md)。
-
-DSH 的 reasoning Body Slot 仅在正文已经展开后挂载，无法控制外层开合，因此采用 Host 插件管理的**磁盘级前端补丁**，不是 DOM 点击模拟：从 `clientModules.clientPath()` 取实际前端产物，校验包版本和唯一代码锚点，原子替换后调用 `clientModules.rebuilt()`，由 DSH 原生 HMR 发布前端新版本。
-
-- **启用／启动：** 应用补丁。
-- **停用／卸载／正常退出：** 只反向移除本补丁，保留其他位置的用户修改。
-- **其他代码已经修改了补丁内部：** 保留文件并记录诊断，不用旧备份覆盖新代码。
-- **进程被强制终止：** 磁盘补丁可能保留；再次启用时会识别并接管。
-
-风险提示：同一台机器上其他 profile 或进程若共用同一份 Chat 前端产物，也可能受到影响，建议只由一个 DSH 实例管理该产物；安装目录需要可写；后续 DSH 版本应重新核对扩展接口和代码锚点。
 
 ## 开发与验证
 
@@ -116,5 +134,12 @@ node scripts/verify-client-api.mjs "D:\解包产物根目录"
 ## 发布
 
 源码公开托管于 [GitHub：shenjackyuanjie/dsh-expand-think](https://github.com/shenjackyuanjie/dsh-expand-think)，包发布在 GitHub Packages 的 `@shenjackyuanjie` scope 下。发布用 `pnpm publish`（`publishConfig` 已固定 registry 与 public 访问）；GitHub 的包可见性不自动继承仓库，首次发布后需在 Package settings 中确认 Public。
+
+发版后把 `pnpm run pack` 的产物作为 release 附件上传，供「从 GitHub Release 附件安装」使用：
+
+```powershell
+pnpm run pack
+gh release upload v0.4.0 dist/shenjackyuanjie-dsh-expand-think-0.4.0.tgz --repo shenjackyuanjie/dsh-expand-think
+```
 
 以 [GNU GPL-3.0-or-later 许可证](./LICENSE)发布，Copyright (c) 2026 shenjackyuanjie。
